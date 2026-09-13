@@ -301,29 +301,34 @@ class Metaculus
       end
 
       # swap to map specific values to probabilities
+      # For log-scale questions, transform value keys to normalized CDF location space
+      # so that interpolation is done in log-space rather than linear value space.
+      # For linear-scale questions this is mathematically equivalent to the original.
       data = normalized_percentiles.invert
+      data = data.transform_keys { |v| cdf_location(v) } if scaling['zero_point']
       known_x = data.keys.sort
 
       x_values.each do |x|
-        if known_x.include?(x)
-          y_values.append(data[x])
-        elsif x < known_x.first
+        eval_x = scaling['zero_point'] ? cdf_location(x) : x
+        if known_x.include?(eval_x)
+          y_values.append(data[eval_x])
+        elsif eval_x < known_x.first
           y_values.append(data[known_x.first])
-        elsif x > known_x.last
+        elsif eval_x > known_x.last
           y_values.append(data[known_x.last])
         else
           previous_x = known_x.first
           next_x = known_x.last
           known_x.each do |kx|
             next_x = kx
-            break if next_x > x
+            break if next_x > eval_x
 
             previous_x = kx
           end
           previous_y = data[previous_x]
           next_y = data[next_x]
 
-          y = previous_y + (x - previous_x) * (next_y - previous_y) / (next_x - previous_x)
+          y = previous_y + (eval_x - previous_x) * (next_y - previous_y) / (next_x - previous_x)
           y_values.append(y)
         end
       end
@@ -715,6 +720,21 @@ class Metaculus
     end
 
     private
+
+    def cdf_location(value)
+      min = scaling['range_min'].to_f
+      max = scaling['range_max'].to_f
+      zero_pt = scaling['zero_point']
+
+      if zero_pt.nil?
+        (value - min) / (max - min)
+      else
+        zero_pt = zero_pt.to_f
+        deriv_ratio = (max - zero_pt) / (min - zero_pt)
+        safe_value = value == zero_pt ? value + 1e-10 : value.to_f
+        (Math.log((safe_value - min) * (deriv_ratio - 1) + (max - min)) - Math.log(max - min)) / Math.log(deriv_ratio)
+      end
+    end
 
     def cdf_xaxis
       @cdf_xaxis ||= scaling['continuous_range']
