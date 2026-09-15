@@ -2,7 +2,7 @@
 
 Your research will focus on the following forecast context.
 
-**Today's date: <%= Time.now.strftime('%B %d, %Y') %>** — all searches must use this as the reference date. Reject any data point whose observation date is unclear or unstated.
+**Today's date: <%= Time.now.strftime('%B %d, %Y') %>** — anchor every search to this reference date. Treat a data point whose observation date is unclear or unstated as unusable, because undated or stale figures silently corrupt the base rates and current-state indicators the forecast is built on.
 
 <%= @forecast_prompt -%>
 
@@ -11,7 +11,7 @@ Your research will focus on the following forecast context.
 # Instructions
 
 ## Pre-Search (private — do not include in final output)
-Decompose the forecast question into 3–5 focused sub-questions (e.g. base rates, current state, key drivers, resolution criteria edge cases). Use these as search queries to target retrieval before writing the brief. Do not output the sub-questions or raw search results.
+Decompose the forecast question into 3–5 focused sub-questions (e.g. base rates, current state, key drivers, resolution criteria edge cases). Use these as search queries to target retrieval before writing the brief. Keep the sub-questions and raw search results private — they are scaffolding for retrieval, and including them in the brief buries the signal the forecaster needs.
 
 **Before writing the brief, for each current-state indicator you find, verify: (a) is this an observation or a projection? (b) what is the date of the most recent actual measurement? If you only have a projection, re-search for the observation.**
 
@@ -24,15 +24,15 @@ You have access to a `calculate` tool for safe arithmetic. **Use it whenever you
 If you find yourself typing a number you derived from other numbers in your head, use the tool instead.
 
 ## Observation / Projection Gate
-**For every indicator in Section 2, you MUST label it as either:**
+Projections age rapidly, and a projection mistaken for an observation makes stale expectations look like current ground truth — so label every indicator in Section 2 as exactly one of:
 - `{Observation: YYYY-MM-DD}` — a measurement of something that already happened
 - `{Projection: issued YYYY-MM-DD, covering YYYY-MM-DD to YYYY-MM-DD}` — a model forecast
 - `{Stale: Last observation YYYY-MM-DD, expected cadence: [weekly/monthly/etc.]}` — overdue
 
-If you cannot determine which category an indicator falls into, it is a projection — flag it as such. Do not present projections as observations.
+When you cannot determine which category an indicator falls into, treat it as a projection and flag it as such — mislabeling a projection as an observation is the failure this gate exists to catch.
 
-## Final Output Format (mandatory)
-Structure your research output as a brief with exactly four sections. Use the section headings exactly as shown. Do not add extra sections, preamble, or closing remarks.
+## Final Output Format
+Structure your research output as a brief with exactly four sections, using the headings shown below. The forecasting stage consumes this brief by its section structure, so extra sections, preamble, or informal closing remarks can misroute or drop the evidence they contain — the only content after the four sections is the research summary defined at the end.
 
 ### 1. Base Rate
 What is the historical frequency or long-run average for this class of event?
@@ -43,7 +43,7 @@ What is the historical frequency or long-run average for this class of event?
 
 ### 2. Current Indicators
 What are the latest data points, recent announcements, scheduled events, and current market or expert expectations?
-- Factual, time-stamped observations only. Prefer the most recent datapoint for each indicator.
+- Include factual, time-stamped observations only — undated assertions and projections presented as fact skew the forecast that builds on this section. Prefer the most recent datapoint for each indicator.
 - Include current polling, market pricing, expert surveys, official statements, or monitoring data where available.
 - Note whether each indicator is improving, deteriorating, or stable relative to the trend that would produce the outcome.
 
