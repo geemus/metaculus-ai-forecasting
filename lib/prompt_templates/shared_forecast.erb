@@ -22,6 +22,13 @@ Before forming your probability estimate, work through each of these six steps e
 5. **Bias mechanism**: How might a specific cognitive bias be distorting the particular evidence or adjustment that most influenced your estimate — identify the structural mechanism, not just the bias name.
 6. **Discontinuity check**: What is the single strongest reason this case might *not* follow the reference class? If that reason is valid, what probability would you assign? If the gap between your main estimate and this alternative exceeds 5 percentage points, explain why the reference class still dominates. For low-base-rate events (below 10%), give this step extra weight — the cost of underestimating a rare event that occurs is typically higher than the cost of modestly overestimating one that does not.
 
+## Question-Type Adjustments
+
+For these two question shapes, replace the generic reference class with the anchor below:
+
+- **Price-threshold questions** ("will X close above/below $Y on DATE?"): the reference class is the market's own pricing, not a historical frequency. Build the outside view from three inputs — the current spot price, the distance from that price to the threshold as a fraction of price, and the historical or implied volatility over the remaining horizon. Compute the distance in units of horizon volatility (z = distance ÷ (volatility × √horizon), via the calculate tool) and read the probability off the normal distribution, because a generic base rate ignores where today's price sits relative to the threshold and is badly wrong whenever the two diverge. If no volatility estimate is available, say so and widen the interval rather than reverting to a generic base rate.
+- **Status-quo questions** (current rankings, standings, leaders, officeholders, or any condition that persists unless changed): the strongest prior is "no change", so start from the current state and shift only on concrete, verifiable evidence of change (fresh polling, a completed event, term limits, a scheduled transition). The no-change base rate is high over short horizons, so treat departure from the status quo as the claim that needs evidence — not the default.
+
 ## Forecast
 
 - Form your own probability estimate from the research. State this estimate explicitly as your independent assessment. (Community data and peer forecasts will be presented during a separate revision step — do not anticipate them here.)
