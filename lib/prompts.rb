@@ -64,6 +64,7 @@ SUPERFORECASTER_SYSTEM_PROMPT = ERB.new(<<~SUPERFORECASTER_SYSTEM_PROMPT, trim_m
   - Explain how rates might change over time.
   - Provide sensitivity analysis on key parameters.
   - Explicitly state the strongest argument against your reasoning and provide an alternative probability estimate in the same format as your main forecast, assuming that argument is correct.
+  - Before finalizing, check your answer against every hard bound it cannot cross — a range, definitional, or logical limit (e.g. a dominance share cannot exceed 100%, a vote count cannot exceed the number of eligible members). An impossible value is not merely imprecise: it is discarded or distorted downstream and signals a broken analysis. Emit the required <feasibility_check> block.
   - At the end of your forecast, before your confidence rating, provide a 1-2 sentence summary of your key argument and conclusion. Use this format:
   <forecast_summary>
   [One to two sentences capturing your core reasoning path and conclusion.]
@@ -120,8 +121,42 @@ def multiple_choice_forecast_prompt(question)
   MULTIPLE_CHOICE_FORECAST_PROMPT
 end
 
+def feasibility_check_prompt(question)
+  FEASIBILITY_CHECK_PROMPT.sub('{{BOUNDS}}') { question_bounds(question) }
+end
+
+def question_bounds(question)
+  scaling = question.data.dig('question', 'scaling') || {}
+  unit = question.units.to_s.empty? ? '' : " #{question.units}"
+  bounds = case question.type
+           when 'binary'
+             ['Probability range: 0%–100% (a probability cannot fall outside this interval).']
+           when 'numeric', 'discrete'
+             [].tap do |lines|
+               if question.lower_bound
+                 qualifier = scaling['open_lower_bound'] ? 'open — values below this bound are permitted' : 'closed — no value may fall below this bound'
+                 lines << "Lower bound: #{question.lower_bound}#{unit} (#{qualifier})."
+               end
+               if question.upper_bound
+                 qualifier = scaling['open_upper_bound'] ? 'open — values above this bound are permitted' : 'closed — no value may exceed this bound'
+                 lines << "Upper bound: #{question.upper_bound}#{unit} (#{qualifier})."
+               end
+             end
+           when 'multiple_choice'
+             [].tap do |lines|
+               lines << 'Each option probability must lie between 0% and 100%, and the option probabilities must sum to 100%.'
+               lines << "Options: #{question.options.join(', ')}." if question.options && !question.options.empty?
+             end
+           else
+             []
+           end
+  bounds << 'No question-specific bounds were supplied — identify any range, definitional, or logical limits yourself.' if bounds.empty?
+  bounds.map { |line| "- #{line}" }.join("\n")
+end
+
 def consensus_prompt_with_type(llm, question, prompt_template)
   prompt = prompt_template.result(binding)
+  prompt += "\n#{feasibility_check_prompt(question)}"
   prompt += case question.type
             when 'binary'
               BINARY_FORECAST_PROMPT
@@ -140,10 +175,36 @@ FORMAT_REINFORCEMENT = <<~FORMAT_REINFORCEMENT
   IMPORTANT: An automated parser extracts your final answer from the exact XML tags specified above. Emit those tags verbatim — an answer in JSON, markdown, or any other format is silently dropped, and your forecast is not recorded.
 FORMAT_REINFORCEMENT
 
+FEASIBILITY_CHECK_PROMPT = <<~FEASIBILITY_CHECK_PROMPT
+  ## Hard Bounds Check (required, before your final answer)
+
+  Before finalizing, check your answer against every hard bound it cannot cross. A hard bound is a value the answer cannot possibly take — a physical, definitional, or logical impossibility, not a matter of judgement. An impossible value costs more than an imprecise one: a forecast outside the feasible range is discarded or distorted, and it signals that the analysis behind it is broken.
+
+  Enumerate every bound that constrains this answer:
+  1. Range and definitional bounds — e.g. a percentage must lie between 0% and 100%; a dominance share cannot exceed 100%.
+  2. Logical and domain bounds — e.g. a vote count cannot exceed the number of eligible members; a subset cannot exceed its superset.
+  3. The question's own bounds, listed below — the set most easily overlooked.
+
+  For each bound, state whether each of your submitted values satisfies it. If a value violates a bound, replace it with the nearest feasible value and say which bound forced the change.
+
+  Question bounds:
+  {{BOUNDS}}
+
+  Emit exactly this block (an automated parser reads the `Verdict:` line, so emit it verbatim):
+  <feasibility_check>
+  Bounds considered:
+  - <bound>: <why it is a hard limit>
+  Submitted values:
+  - <value>: <satisfied | VIOLATION — which bound, and by how much>
+  Verdict: SATISFIED | VIOLATION
+  </feasibility_check>
+FEASIBILITY_CHECK_PROMPT
+
 def prompt_with_type(llm, question, prompt_template)
   forecast_context = FORECAST_PROMPT_TEMPLATE.result(binding)
   situation_snapshot = SITUATION_SNAPSHOT.result(binding)
   prompt = prompt_template.result(binding)
+  prompt += "\n#{feasibility_check_prompt(question)}"
   prompt += case question.type
             when 'binary'
               BINARY_FORECAST_PROMPT
@@ -168,6 +229,7 @@ CONSENSUS_SYSTEM_PROMPT = ERB.new(<<~CONSENSUS_SYSTEM_PROMPT, trim_mode: '-').re
   - A mechanical aggregate baseline is supplied with the forecasts (log-odds mean for binary/multiple-choice; quantile averaging for distributions). Treat it as one input among several — it pools the raw numbers in a calibrated way, but it does not evaluate reasoning quality. Use it to orient yourself in the range of estimates, but weight reasoning quality and evidence strength above mechanical proximity.
   - Weight forecasts by both stated confidence and epistemic quality. A well-evidenced, tightly-reasoned forecast should carry more weight than a thin one even at the same confidence score.
   - Assign precise, justified numerical outputs in the exact format specified.
+  - Before finalizing, check the consensus answer against every hard bound it cannot cross — range, definitional, or logical limits — and emit the required <feasibility_check> block. The input forecasts may themselves contain impossible values; a bound-violating number should be corrected or excluded, never averaged into the consensus.
 CONSENSUS_SYSTEM_PROMPT
 
 FORECAST_DELPHI_PROMPT_TEMPLATE = ERB.new(File.read('./lib/prompt_templates/forecast_delphi.erb'), trim_mode: '-')
