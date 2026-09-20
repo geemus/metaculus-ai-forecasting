@@ -40,6 +40,8 @@ RESEARCHER_SYSTEM_PROMPT = ERB.new(<<~RESEARCHER_SYSTEM_PROMPT, trim_mode: '-').
   ## Market and Financial Forecasts
   - Incorporate sector trends, relevant indices, macroeconomic context, and recent news.
   - Include market sentiment, technical indicators, and recent volatility where relevant.
+  - For any question hinging on a market price, rate, commodity, or crypto level, report the current spot or front-month futures price with its timestamp and source — this quote is the anchor the forecast is built on, so an undated or stale figure is worse than none.
+  - For price-threshold questions ("will X close above/below $Y?"), also report the distance from the current price to the threshold and a historical or implied volatility estimate over the question's horizon (annualised if the horizon differs), so the distance can be converted into a probability.
 RESEARCHER_SYSTEM_PROMPT
 
 SUPERFORECASTER_SYSTEM_PROMPT = ERB.new(<<~SUPERFORECASTER_SYSTEM_PROMPT, trim_mode: '-').result(binding)
@@ -51,7 +53,10 @@ SUPERFORECASTER_SYSTEM_PROMPT = ERB.new(<<~SUPERFORECASTER_SYSTEM_PROMPT, trim_m
   - Temporal context (today's date, resolution deadline, time remaining) is provided in the prompt. Rely on these supplied values rather than estimating or computing dates yourself, because self-computed dates are a common error that can quietly invalidate an otherwise sound forecast.
   - Assign precise, justified numerical likelihoods (e.g., 42%, 2.3%) with confidence intervals, while recognizing limits of knowledge and avoiding unjustified over-precision.
   - Start with a reference-class base rate from historical data. Then adjust upwards or downwards based on case-specific evidence, explicitly noting the direction and strength of each adjustment.
-  - For numeric forecasts, produce a P50 that minimises symmetric absolute error. Start from a mean-reverting baseline (e.g., the 5-year historical average, or the current level for a flow variable). State the baseline explicitly, then note how far your P50 sits from it and why this period warrants a departure. Supply P10 and P90 to express uncertainty.
+  - For numeric forecasts, produce a P50 that minimises symmetric absolute error. Start from a baseline and state it explicitly, then note how far your P50 sits from it and why this period warrants a departure. Choose the baseline to match the quantity, because the wrong anchor biases the whole distribution:
+    - a flow variable (quarterly revenue, annual emissions): the current level;
+    - a mean-reverting ratio (a long-run interest rate, a demographic rate): the long-run average;
+    - a liquid market price, rate, commodity, or crypto level: the current spot or front-month futures price. Near-term levels are set by today's supply and demand, so a multi-year average can sit arbitrarily far from the current price and manufactures mean-reversion the market is not pricing. Anchor on the current price and adjust only for named, verifiable catalysts (a scheduled data release, earnings, an announced policy decision), then supply P10/P90 to express uncertainty.
   - For each adjustment — to the base rate, for cognitive/source biases, or to confidence — explicitly state the direction, magnitude, supporting evidence, and reasoning.
   - Decompose your uncertainty into two components and state each explicitly:
     - **Knowledge uncertainty** — what you don't know but could learn with better data, models, or expertise. When knowledge uncertainty is high, widen your intervals accordingly.
@@ -84,7 +89,7 @@ BINARY_FORECAST_PROMPT
 
 NUMERIC_FORECAST_PROMPT = <<~NUMERIC_FORECAST_PROMPT
   - At the end of your forecast, provide precise, percentile final predictions of values in the given units and range. Report a single value with its unit on each line — an automated parser reads each percentile and cannot interpret a range of values.
-    - Before providing your percentiles, check your P50 against a mean-reverting baseline (e.g., 5-year historical average, current level, or long-run trend). If your P50 departs from the baseline, state the specific structural reason why this period differs.
+    - Before providing your percentiles, check your P50 against the appropriate baseline — the current level for a flow variable, the long-run average for a mean-reverting ratio, or the current spot/front-month price for a liquid market level (never a multi-year average for a near-term market question). If your P50 departs from the baseline, state the specific structural reason why this period differs.
     - Write your final predictions in this format:
   <percentiles>
   Percentile  5: A {unit}
