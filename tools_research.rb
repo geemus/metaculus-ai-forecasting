@@ -119,6 +119,11 @@ cache(post_id, 'research.json') do
       .compact
       .join("\n")
 
+    # Stamp the brief with its retrieval time before it is cached. The
+    # cached research is reused by later runs, so this is the only record
+    # of how old the brief in hand actually is.
+    text = with_research_meta(text)
+
     cache_write(post_id, 'outputs/research.md', text)
 
     duration = Time.now - start_time

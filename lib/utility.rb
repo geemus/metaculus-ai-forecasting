@@ -214,6 +214,14 @@ def load_forecast(post_id, provider, type: 'forecast')
   Response.new(provider, json: forecast_json)
 end
 
+# Stamp the research brief with its retrieval time. research.json is cached
+# per post and reused by every later run, so without this stamp a brief
+# generated weeks ago is indistinguishable from one generated minutes ago.
+def with_research_meta(text, at: Time.now)
+  stamp = at.utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+  "<research_meta>\nresearched_at: #{stamp}\n</research_meta>\n\n#{text}"
+end
+
 # Load research and optionally extract stripped content
 def load_research(post_id, strip_tags: nil)
   research_json = cache_read!(post_id, 'research.json')

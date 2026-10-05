@@ -9,6 +9,8 @@ Here is a summary of relevant data from your research assistant (structured as f
 <%= @research_output -%>
 </research>
 
+Research is a dated artifact. The block above opens with a `<research_meta>` tag giving `researched_at` — the date the research was retrieved — and each indicator inside it carries its own as-of date. Question Metadata (Current Date) tells you how much later than that you are forecasting. Where an indicator's as-of date sits well behind the current date, or is flagged stale, treat it as weaker evidence than one observed recently, rather than reading every figure in the brief as a current reading.
+
 # Instructions
 
 ## Pre-Forecast Decomposition

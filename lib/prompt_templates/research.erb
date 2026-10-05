@@ -31,6 +31,8 @@ Projections age rapidly, and a projection mistaken for an observation makes stal
 
 When you cannot determine which category an indicator falls into, treat it as a projection and flag it as such — mislabeling a projection as an observation is the failure this gate exists to catch.
 
+Each indicator should also read as a dated triple: the latest observed value, the date of observation, and the recent direction of change relative to it. Claim a direction only when you have a second, earlier dated observation to compare against, and show both — e.g. `{As-of: 2026-07-08, 41.2%; prior 44.3% on 2026-07-01; improving, cadence: weekly}`. With a single observation, report the direction as undetermined rather than inferring a trend from the level alone.
+
 ## Final Output Format
 Structure your research output as a brief with exactly four sections, using the headings shown below. The forecasting stage consumes this brief by its section structure, so extra sections, preamble, or informal closing remarks can misroute or drop the evidence they contain — the only content after the four sections is the research summary defined at the end.
 
@@ -63,5 +65,5 @@ What are simple bounds on what is plausible for the outcome?
 After the four sections above, close your brief with a research summary in this format:
 
 <research_summary>
-[3-5 sentence executive summary covering: the base rate range found and its reliability; the 2-3 most important current indicators and their direction; the most credible surprise signal (or state that none exist); the overall uncertainty range and the single largest driver of uncertainty.]
+[3-5 sentence executive summary covering: the base rate range found and its reliability; the 2-3 most important current indicators with their as-of dates and direction; the most credible surprise signal (or state that none exist); the overall uncertainty range and the single largest driver of uncertainty.]
 </research_summary>
