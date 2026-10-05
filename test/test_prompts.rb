@@ -89,4 +89,34 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, 'Hard Bounds Check'
     assert_includes prompt, '<feasibility_check>'
   end
+
+  # ─── research provenance: retrieval timestamp ──────────────────────────────
+
+  def test_with_research_meta_stamps_retrieval_time
+    stamped = with_research_meta("### 1. Base Rate\nbody", at: Time.parse('2026-10-05T14:12:03Z'))
+    assert stamped.start_with?("<research_meta>\nresearched_at: 2026-10-05T14:12:03Z\n</research_meta>"), stamped[0, 120]
+    assert stamped.end_with?("### 1. Base Rate\nbody")
+  end
+
+  def test_research_meta_survives_into_forecaster_prompt
+    @research_output = with_research_meta('brief body', at: Time.parse('2026-10-05T14:12:03Z'))
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, '<research_meta>'
+    assert_includes prompt, 'researched_at: 2026-10-05T14:12:03Z'
+  end
+
+  def test_forecaster_prompt_weighs_stale_indicators
+    @research_output = 'brief body'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'weaker evidence than one observed recently'
+  end
+
+  def test_research_prompt_requires_dated_trend
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    assert_includes prompt, 'second, earlier dated observation'
+    assert_includes prompt, 'undetermined'
+    assert_includes prompt, 'as-of dates and direction'
+  end
 end
