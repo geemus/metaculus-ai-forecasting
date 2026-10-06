@@ -31,7 +31,7 @@ Projections age rapidly, and a projection mistaken for an observation makes stal
 
 When you cannot determine which category an indicator falls into, treat it as a projection and flag it as such — mislabeling a projection as an observation is the failure this gate exists to catch.
 
-Each indicator should also read as a dated triple: the latest observed value, the date of observation, and the recent direction of change relative to it. Claim a direction only when you have a second, earlier dated observation to compare against, and show both — e.g. `{As-of: 2026-07-08, 41.2%; prior 44.3% on 2026-07-01; improving, cadence: weekly}`. With a single observation, report the direction as undetermined rather than inferring a trend from the level alone.
+Each indicator should also read as a dated triple: the latest observed value, the date of observation, and the recent direction of change relative to it. Claim a direction only when you have a second, earlier dated observation to compare against, and show both — e.g. `{As-of: 2026-07-08, 41.2%; prior 44.3% on 2026-07-01; improving, cadence: weekly}`. With a single observation, report the direction as undetermined rather than inferring a trend from the level alone. Give the size of the change as well as its direction — "41.2%, prior 44.3%" and "41.2%, prior 41.0%" are both "improving" but differ in pace. For counts, cases, and cumulative totals, include enough dated observations (typically three) to show whether the recent rate is accelerating, flat, decelerating, or plateauing, because a single direction hides whether the pace itself is changing.
 
 ## Final Output Format
 Structure your research output as a brief with exactly four sections, using the headings shown below. The forecasting stage consumes this brief by its section structure, so extra sections, preamble, or informal closing remarks can misroute or drop the evidence they contain — the only content after the four sections is the research summary defined at the end.
@@ -48,6 +48,7 @@ What are the latest data points, recent announcements, scheduled events, and cur
 - Include factual, time-stamped observations only — undated assertions and projections presented as fact skew the forecast that builds on this section. Prefer the most recent datapoint for each indicator.
 - Include current polling, market pricing, expert surveys, official statements, or monitoring data where available.
 - Note whether each indicator is improving, deteriorating, or stable relative to the trend that would produce the outcome.
+- For count, case, or cumulative-total indicators, report the change per interval rather than the level alone, and flag any saturation or control mechanism (finite susceptible pool, intervention, supply ceiling) with its dated evidence.
 
 ### 3. Surprise Signals
 What credible leaks, expert warnings, pattern breaks, black-swan candidates, or leading indicators could upend the baseline?
