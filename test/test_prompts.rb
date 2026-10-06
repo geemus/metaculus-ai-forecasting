@@ -137,6 +137,62 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, 'dated catalyst'
   end
 
+  # ─── multiple-choice favorite-bias check ───────────────────────────────────
+
+  MC_OPTIONS = %w[A B C].freeze
+
+  def test_multiple_choice_prompt_asks_what_would_make_favorite_lose
+    prompt = multiple_choice_forecast_prompt(build_question(type: 'multiple_choice', options: MC_OPTIONS))
+    assert_includes prompt, 'What would make the favorite lose?'
+    assert_includes prompt, 'Name the favorite'
+  end
+
+  def test_multiple_choice_prompt_requires_reference_class_favorite_loss_rate
+    prompt = multiple_choice_forecast_prompt(build_question(type: 'multiple_choice', options: MC_OPTIONS))
+    assert_includes prompt, 'reference-class favorite-loss rate as a number'
+    assert_includes prompt, 'how often does the leader in this kind of field lose'
+  end
+
+  # The departure must be evidence-gated against the reference class, not left
+  # as free-floating confidence in today's leader.
+  def test_multiple_choice_prompt_gates_departure_on_named_evidence
+    prompt = multiple_choice_forecast_prompt(build_question(type: 'multiple_choice', options: MC_OPTIONS))
+    assert_includes prompt, 'only for named, current evidence'
+    assert_includes prompt, 'move the probability toward the reference-class rate'
+  end
+
+  def test_multiple_choice_prompt_flags_volatile_domains
+    prompt = multiple_choice_forecast_prompt(build_question(type: 'multiple_choice', options: MC_OPTIONS))
+    assert_includes prompt, 'Volatile fields'
+    assert_includes prompt, 'sports'
+    assert_includes prompt, 'leaderboards'
+  end
+
+  # Same rationale as the numeric prompt: a fixed percentage cap gets anchored
+  # on and collapses the scale-relative judgement into a pass/fail, so the
+  # favorite check deliberately carries no numeric ceiling.
+  def test_multiple_choice_prompt_states_no_fixed_probability_cap
+    prompt = multiple_choice_forecast_prompt(build_question(type: 'multiple_choice', options: MC_OPTIONS))
+    refute_match(/\d+\s*[-–]\s*\d+\s*%/, prompt)
+    refute_match(/above\s*\d/i, prompt)
+  end
+
+  def test_forecast_prompt_carries_multiple_choice_favorite_check
+    @research_output = 'research summary'
+    q = build_question(type: 'multiple_choice', options: MC_OPTIONS)
+    prompt = prompt_with_type(nil, q, SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'What would make the favorite lose?'
+  end
+
+  def test_consensus_prompt_carries_multiple_choice_favorite_check
+    @research_output = 'research summary'
+    @revised_forecasts = []
+    @mechanical_baseline = nil
+    q = build_question(type: 'multiple_choice', options: MC_OPTIONS)
+    prompt = consensus_prompt_with_type(nil, q, FORECAST_CONSENSUS_PROMPT_TEMPLATE)
+    assert_includes prompt, 'What would make the favorite lose?'
+  end
+
   # ─── binary base rate vs status quo ────────────────────────────────────────
 
   def test_superforecaster_prompt_keeps_base_rate_floor
