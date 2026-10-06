@@ -90,6 +90,53 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, '<feasibility_check>'
   end
 
+  # ─── numeric baseline guidance: scale-relative, no fixed threshold ─────────
+
+  def test_numeric_prompt_requires_latest_observed_value_and_date
+    assert_includes NUMERIC_FORECAST_PROMPT, 'latest observed value'
+    assert_includes NUMERIC_FORECAST_PROMPT, 'as-of date'
+  end
+
+  def test_numeric_prompt_requires_stated_deviation_and_direction
+    assert_includes NUMERIC_FORECAST_PROMPT, 'as a percentage and in which direction'
+  end
+
+  def test_numeric_prompt_judges_deviation_against_quantity_scale
+    assert_includes NUMERIC_FORECAST_PROMPT, "the quantity's own scale"
+    assert_includes NUMERIC_FORECAST_PROMPT, 'recent movement and its cadence'
+  end
+
+  def test_numeric_prompt_requires_direction_matched_catalyst
+    assert_includes NUMERIC_FORECAST_PROMPT, 'dated catalyst'
+    assert_includes NUMERIC_FORECAST_PROMPT, 'pull your P50 back toward the baseline'
+  end
+
+  # A hard percentage here would be anchored on and would collapse the
+  # scale-relative judgement into a pass/fail, so the prompt deliberately
+  # carries no numeric cut-off.
+  def test_numeric_prompt_states_no_fixed_deviation_threshold
+    refute_match(/\b\d+(\.\d+)?\s*%/, NUMERIC_FORECAST_PROMPT)
+    refute_match(/more than\s*\d/i, NUMERIC_FORECAST_PROMPT)
+  end
+
+  def test_forecast_prompt_carries_numeric_baseline_guidance
+    @research_output = 'research summary'
+    q = build_question(type: 'numeric', scaling: { 'range_min' => 0, 'range_max' => 100 })
+    prompt = prompt_with_type(nil, q, SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'latest observed value'
+    assert_includes prompt, 'dated catalyst'
+  end
+
+  def test_consensus_prompt_carries_numeric_baseline_guidance
+    @research_output = 'research summary'
+    @revised_forecasts = []
+    @mechanical_baseline = nil
+    q = build_question(type: 'numeric', scaling: { 'range_min' => 0, 'range_max' => 100 })
+    prompt = consensus_prompt_with_type(nil, q, FORECAST_CONSENSUS_PROMPT_TEMPLATE)
+    assert_includes prompt, 'latest observed value'
+    assert_includes prompt, 'dated catalyst'
+  end
+
   # ─── research provenance: retrieval timestamp ──────────────────────────────
 
   def test_with_research_meta_stamps_retrieval_time

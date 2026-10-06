@@ -90,7 +90,12 @@ BINARY_FORECAST_PROMPT
 
 NUMERIC_FORECAST_PROMPT = <<~NUMERIC_FORECAST_PROMPT
   - At the end of your forecast, provide precise, percentile final predictions of values in the given units and range. Report a single value with its unit on each line — an automated parser reads each percentile and cannot interpret a range of values.
-    - Before providing your percentiles, check your P50 against the appropriate baseline — the current level for a flow variable, the long-run average for a mean-reverting ratio, or the current spot/front-month price for a liquid market level (never a multi-year average for a near-term market question). If your P50 departs from the baseline, state the specific structural reason why this period differs.
+    - Before your percentiles, lay the anchor out explicitly, because a baseline left unstated lets an unexamined number stand as the estimate:
+      - the latest observed value of this quantity, with its as-of date and source;
+      - the baseline you are anchoring on, and its value — the current level for a flow variable, the long-run average for a mean-reverting ratio, or the current spot/front-month price for a liquid market level (never a multi-year average for a near-term market question, which manufactures mean-reversion the market is not pricing);
+      - your P50, and the deviation between it and the baseline, as a percentage and in which direction.
+    - Judge that deviation against the quantity's own scale rather than a fixed cut-off, because the same departure is routine for a fast-moving series and extraordinary for a slow one: how much has this quantity actually moved over a comparable recent period, and what does that imply over the remaining horizon? State the recent movement and its cadence, or say explicitly that you cannot quantify it.
+    - If the deviation is larger than that recent movement implies, name the specific, dated catalyst that justifies it — a scheduled data release, earnings, or an announced policy decision — or pull your P50 back toward the baseline. The catalyst must act in the direction of the departure: an upward move explained by a down-side mechanism, or a downward move by an up-side one, leaves the deviation unexplained.
     - Write your final predictions in this format:
   <percentiles>
   Percentile  5: A {unit}
