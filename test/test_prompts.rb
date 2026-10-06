@@ -137,6 +137,27 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, 'dated catalyst'
   end
 
+  # ─── binary base rate vs status quo ────────────────────────────────────────
+
+  def test_superforecaster_prompt_keeps_base_rate_floor
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'even when the current state is "no."'
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'never, by itself, a reason to forecast below it'
+  end
+
+  def test_shared_prompt_quantifies_status_quo_prior_as_base_rate
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'Express that "no change" prior as a number'
+    assert_includes prompt, 'do not substitute a bare "no."'
+    assert_includes prompt, '"no is the default" is not such evidence'
+  end
+
+  def test_situation_snapshot_separates_base_rate_from_status_quo
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'never collapse the base rate to the status-quo outcome'
+  end
+
   # ─── research provenance: retrieval timestamp ──────────────────────────────
 
   def test_with_research_meta_stamps_retrieval_time
