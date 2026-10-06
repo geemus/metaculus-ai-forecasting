@@ -187,4 +187,43 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, 'undetermined'
     assert_includes prompt, 'as-of dates and direction'
   end
+
+  # ─── count / cumulative-total trend and saturation ─────────────────────────
+
+  def test_shared_prompt_asks_for_rate_trend_on_counts
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'numeric'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'accelerating, flat, decelerating, or plateauing'
+    assert_includes prompt, 'a rate is only readable across two dated observations'
+  end
+
+  def test_shared_prompt_guards_cumulative_totals_against_decrease
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'numeric'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'for a series that does not reset or revise, a cumulative total cannot fall'
+    assert_includes prompt, 'no submitted percentile may sit below the latest observed total'
+  end
+
+  def test_shared_prompt_requires_named_saturation_mechanism
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'numeric'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'name the mechanism that would bend the curve'
+    assert_includes prompt, 'extrapolating the recent rate is the default'
+  end
+
+  def test_research_prompt_requests_change_magnitude_and_rate_trend
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    assert_includes prompt, 'Give the size of the change as well as its direction'
+    assert_includes prompt, 'accelerating, flat, decelerating, or plateauing'
+  end
+
+  def test_research_prompt_flags_saturation_mechanisms
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    assert_includes prompt, 'saturation or control mechanism'
+    assert_includes prompt, 'change per interval rather than the level alone'
+  end
 end
