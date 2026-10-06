@@ -137,6 +137,22 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, 'dated catalyst'
   end
 
+  # ─── consensus: confidence capped at the inputs ────────────────────────────
+
+  def test_consensus_prompt_caps_confidence_at_strongest_input
+    assert_includes CONSENSUS_SYSTEM_PROMPT, 'never more certain than the strongest forecast behind it'
+    assert_includes CONSENSUS_SYSTEM_PROMPT, 'do not place the probability beyond 90% or below 10%'
+    assert_includes CONSENSUS_SYSTEM_PROMPT, 'do not submit an interval tighter than the tightest input interval'
+  end
+
+  def test_consensus_prompt_pulls_inward_on_disagreement
+    assert_includes CONSENSUS_SYSTEM_PROMPT, 'move the consensus toward the pooled baseline, not away from it'
+  end
+
+  def test_consensus_prompt_requires_the_cap_be_stated
+    assert_includes CONSENSUS_SYSTEM_PROMPT, 'name the band you are holding to and the forecast whose evidence justifies it'
+  end
+
   # ─── binary base rate vs status quo ────────────────────────────────────────
 
   def test_superforecaster_prompt_keeps_base_rate_floor
