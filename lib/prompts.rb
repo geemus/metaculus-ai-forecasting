@@ -131,6 +131,11 @@ NUMERIC_FORECAST_PROMPT
 def multiple_choice_forecast_prompt(question)
   options_format = question.options.map { |opt| "#{opt}: X%" }.join("\n  ")
   <<~MULTIPLE_CHOICE_FORECAST_PROMPT
+    - Favorite-bias check (required, before you finalize). Multiple-choice forecasts systematically over-commit to the current favorite. Before writing your final probabilities:
+      - Name the favorite (the highest-probability option) and the strongest runner-up.
+      - Answer "What would make the favorite lose?" with one specific, dated, verifiable path — an injury or roster change, a fresh benchmark or leaderboard result, a scheduled match, a scandal, a new release. If you cannot name one, say so explicitly and widen the favorite's probability.
+      - State the reference-class favorite-loss rate as a number: over a comparable horizon, how often does the leader in this kind of field lose? Set the favorite's probability near that frequency, and depart from it only for named, current evidence strong enough to justify the gap.
+      - Judge the favorite against that reference class rather than against how strong it looks today. Volatile fields where the leader changes often — sports, AI and benchmark leaderboards, crowded races with many plausible winners — carry high favorite-loss rates, so a high favorite probability there is a claim that needs overwhelming, current evidence; absent that evidence, move the probability toward the reference-class rate.
     - At the end of your forecast, provide precise, probabilistic final predictions for each option, reporting the probability itself and nothing else.
       - Each option's probability must fall between 0.1% and 99.9%, and they must sum to 100% — a parser normalizes and submits these as a distribution, so values outside the range or a sum off 100% distort every option.
       - Write your final predictions in this format (an automated parser reads every line, so the percent sign is required on each):
