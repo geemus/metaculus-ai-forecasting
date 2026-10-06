@@ -144,6 +144,28 @@ class TestPrompts < Minitest::Test
     assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'never, by itself, a reason to forecast below it'
   end
 
+  # ─── confidence rating: defined and evidence-gated at emission ─────────────
+
+  def test_superforecaster_prompt_defines_confidence_as_calibrated_certainty
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'calibrated certainty that the forecast you have stated is the right one'
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'not a restatement of your probability'
+  end
+
+  def test_superforecaster_prompt_gates_confidence_bands_on_evidence
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'at least two independent confirming sources'
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'one credible, dated source supports the forecast'
+  end
+
+  def test_superforecaster_prompt_defines_source_independence
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'distinct originators'
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'one source, not two'
+  end
+
+  def test_superforecaster_prompt_requires_listing_confidence_sources
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, '<confidence_evidence>'
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'Independent originators:'
+  end
+
   def test_shared_prompt_quantifies_status_quo_prior_as_base_rate
     @research_output = 'research summary'
     prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)

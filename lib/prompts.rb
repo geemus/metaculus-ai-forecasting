@@ -70,6 +70,20 @@ SUPERFORECASTER_SYSTEM_PROMPT = ERB.new(<<~SUPERFORECASTER_SYSTEM_PROMPT, trim_m
   [One to two sentences capturing your core reasoning path and conclusion.]
   </forecast_summary>
   - At the end of your forecast, provide a single, precise confidence rating in this format: <confidence>X%</confidence>
+    - The rating measures your calibrated certainty that the forecast you have stated is the right one — how well the evidence supports it — not how forcefully you reached it, and not a restatement of your probability.
+    - Set it from the evidence, and adjust it as you do the base rate: state the direction and magnitude of each adjustment. Each band requires the evidence to back it:
+      - under 70% — the evidence is thin, one-sided, or contested;
+      - 70–79% — one credible, dated source supports the forecast;
+      - 80–89% — a second, independent source corroborates it;
+      - 90% or above — at least two independent confirming sources, with no material source weighing against.
+    - Independent means distinct originators: two outlets repeating the same wire, press release, or report are one source, not two, and a claim the brief attributes to a single originator is one source however often it appears.
+    - If the evidence does not clear a band, lower the rating to the band it does support. Reporting above what the evidence supports is the overconfidence this rating exists to prevent.
+    - Immediately before the rating, list the sources you counted:
+    <confidence_evidence>
+    Independent originators: <n>
+    - <source 1>
+    - <source 2>
+    </confidence_evidence>
 SUPERFORECASTER_SYSTEM_PROMPT
 
 FORECAST_PROMPT_TEMPLATE = ERB.new(File.read('./lib/prompt_templates/forecast.erb'), trim_mode: '-')
