@@ -18,7 +18,7 @@ jobs:
     steps:
       - id: post_ids
         run: |
-          echo "post_ids=$(curl "https://www.metaculus.com/api/posts/?forecast_type=binary,discrete,multiple_choice,numeric&include_description=true&not_forecaster_id=$METACULUS_BOT_ID&offset=0&statuses=open&tournaments=minibench&tournaments=spring-aib-2026&tournaments=summer-futureeval-2026" -H "Authorization: Token $METACULUS_BOT_API_TOKEN" \
+          echo "post_ids=$(curl "https://www.metaculus.com/api/posts/?forecast_type=binary,discrete,multiple_choice,numeric&include_description=true&not_forecaster_id=$METACULUS_BOT_ID&offset=0&statuses=open&tournaments=minibench&tournaments=summer-futureeval-2026&tournaments=fall-futureeval-2026" -H "Authorization: Token $METACULUS_BOT_API_TOKEN" \
             | jq -c '.results | map(.id)')" >> $GITHUB_OUTPUT
         env:
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
