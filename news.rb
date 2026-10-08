@@ -80,14 +80,21 @@ categories_display = '(none)' if categories_display.empty?
 Formatador.display "[blue]Query: #{query_display}[/] | [blue]Categories: #{categories_display}[/]\n"
 
 Formatador.display "\n[bold][green]# News: Searching(#{post_id})…[/] "
-news_json = cache(post_id, 'news.json') do
-  asknews = AskNews.new
-  news_json = asknews.search_news(filters)
-  cache_write(post_id, 'news.json', news_json)
-  news_json.to_json
-end
+news_path = cache_path(post_id, 'news.json')
+news = if File.exist?(news_path)
+         JSON.parse(File.read(news_path))
+       else
+         AskNews.new.search_news(filters)
+       end
 
-news = JSON.parse(news_json)
+# On AskNews failure, write no news artifacts so the next run retries the
+# search instead of a blank result being cached (in tmp/ and in CI) forever.
+# Downstream stages treat missing news as "no news" (see load_cached_news).
+if news.nil?
+  Formatador.display_line "\n[yellow]# News: unavailable, skipping(#{post_id})[/]"
+  exit
+end
+cache_write(post_id, 'news.json', news.to_json)
 
 # Filter out low-credibility sources
 BLOCKLISTED_DOMAINS = %w[

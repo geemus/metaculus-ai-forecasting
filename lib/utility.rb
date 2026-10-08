@@ -186,8 +186,11 @@ def load_cached_deepnews(post_id)
 end
 
 # Load cached news
+# Missing news.md means the news stage was skipped (e.g. AskNews unavailable);
+# research proceeds without news rather than failing.
 def load_cached_news(post_id)
-  cache_read!(post_id, 'outputs/news.md')
+  path = cache_path(post_id, 'outputs/news.md')
+  File.exist?(path) ? File.read(path) : ''
 end
 
 # Convenience method: load from cache only

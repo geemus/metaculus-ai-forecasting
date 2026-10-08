@@ -39,8 +39,11 @@ class AskNews
     )
     JSON.parse(excon_response.body)
   rescue Excon::Error => e
-    puts e.response.inspect
-    exit(1)
+    # Non-fatal: news is optional context, so an AskNews outage or lapsed
+    # credit should degrade to "no news" rather than halt the pipeline.
+    Formatador.display_line("[yellow]AskNews search failed, continuing without news: #{e.class}[/]")
+    puts e.response.inspect if e.respond_to?(:response)
+    nil
   end
 
   private
