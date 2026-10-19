@@ -297,6 +297,14 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, 'accelerating, flat, decelerating, or plateauing'
   end
 
+  def test_research_prompt_reads_empty_recent_news_as_unsearched
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    assert_includes prompt, 'check that your Current Indicators are up to date'
+    assert_includes prompt, 'not that nothing happened'
+  end
+
   def test_research_prompt_flags_saturation_mechanisms
     @forecast_prompt = 'forecast context'
     @news_output = 'news'

@@ -158,9 +158,11 @@ news_summary = cache(post_id, 'outputs/news_summary.md') do
     tools: []
   )
   summary_prompt = <<~PROMPT
-    Summarize these news articles into a brief roundup. Include:
-    - Article count and date range
-    - 3 key themes or developments across the articles
+    Summarize these news articles into a brief roundup. The articles come in two blocks:
+    developments from the last 48 hours, and background coverage. Include:
+    - First, what the last-48-hours block reports that bears on the question — or state plainly that it has no recent coverage
+    - Article count and date range for the background block
+    - 2-3 key themes across the background coverage
     - The 2-3 most relevant articles for the forecast question (with titles)
 
     #{news_md}

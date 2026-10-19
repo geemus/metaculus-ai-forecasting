@@ -64,19 +64,13 @@ module CommentBuilder
     return nil unless File.exist?(news_path)
 
     news = JSON.parse(File.read(news_path))
-    articles = AskNews.articles(news)
-    return nil if articles.empty?
+    blocks = AskNews.blocks(news)
+    return nil if blocks.values.all?(&:empty?)
 
-    dates = articles.map { |a| a['pub_date'] }.compact.sort
-    date_range = if dates.any?
-                   "#{dates.first[0..9]} to #{dates.last[0..9]}"
-                 else
-                   'unknown date range'
-                 end
+    top_titles = blocks.values.flat_map { |articles| articles.first(2) }
+                       .map { |a| "- #{a['eng_title']}" }.join("\n")
 
-    top_titles = articles.first(3).map { |a| "- #{a['eng_title']}" }.join("\n")
-
-    "#{articles.length} articles (#{date_range}). Top 3 by relevance:\n#{top_titles}"
+    "#{news_block_counts(blocks)}. Top articles (recent first):\n#{top_titles}"
   rescue StandardError
     nil
   end
@@ -256,17 +250,21 @@ module CommentBuilder
     return nil unless File.exist?(news_path)
 
     news = JSON.parse(File.read(news_path))
-    articles = AskNews.articles(news)
-    return nil if articles.empty?
+    blocks = AskNews.blocks(news)
+    return nil if blocks.values.all?(&:empty?)
 
-    dates = articles.map { |a| a['pub_date'] }.compact.sort
-    if dates.any?
-      "#{articles.length} articles (#{dates.first[0..9]} to #{dates.last[0..9]})"
-    else
-      "#{articles.length} articles"
-    end
+    news_block_counts(blocks)
   rescue StandardError
     nil
+  end
+
+  # Counts are of the raw search results in news.json, before news.rb filters
+  # and caps each block for the prompt.
+  def news_block_counts(blocks)
+    background = blocks['archive']
+    dates = background.map { |a| a['pub_date'] }.compact.sort
+    range = dates.any? ? " (#{dates.first[0..9]} to #{dates.last[0..9]})" : ''
+    "#{blocks['latest'].length} from last 48h, #{background.length} background#{range}"
   end
 
   def extract_xml_block(text, tag)
