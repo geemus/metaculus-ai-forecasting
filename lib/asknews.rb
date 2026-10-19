@@ -10,17 +10,27 @@ class AskNews
     new.search_news(params)
   end
 
-  # Archive search ('news knowledge') plus last-48h search ('latest news'),
-  # interleaved so the downstream top-N cut keeps a mix of both. Either half
-  # may fail independently; nil only when both do.
-  STRATEGIES = ['latest news', 'news knowledge'].freeze
+  BLOCKS = { 'latest' => 'latest news', 'archive' => 'news knowledge' }.freeze
 
+  # Articles per block from a cached news.json. Files written before the
+  # latest/archive split hold a single archive search under 'as_dicts'.
+  def self.blocks(news)
+    return { 'latest' => [], 'archive' => news['as_dicts'] || [] } if news.key?('as_dicts')
+
+    BLOCKS.keys.to_h { |block| [block, news[block] || []] }
+  end
+
+  def self.articles(news)
+    blocks(news).values.flatten
+  end
+
+  # Either search may fail independently (its block comes back empty);
+  # nil only when both do.
   def search_news(params)
-    results = STRATEGIES.map { |strategy| search(params, strategy) }.compact
-    return nil if results.empty?
+    results = BLOCKS.transform_values { |strategy| search(params, strategy) }
+    return nil if results.values.all?(&:nil?)
 
-    lists = results.map { |result| result['as_dicts'] || [] }
-    { 'as_dicts' => interleave(lists).uniq { |a| a['article_url'] } }
+    results.transform_values { |result| result&.fetch('as_dicts', nil) || [] }
   end
 
   private
@@ -58,11 +68,6 @@ class AskNews
     Formatador.display_line("[yellow]AskNews #{strategy} search failed, continuing without it: #{e.class}[/]")
     puts e.response.inspect if e.respond_to?(:response)
     nil
-  end
-
-  def interleave(lists)
-    longest = lists.map(&:length).max || 0
-    (0...longest).flat_map { |i| lists.filter_map { |list| list[i] } }
   end
 
   def connection

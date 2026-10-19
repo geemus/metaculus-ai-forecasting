@@ -96,45 +96,55 @@ if news.nil?
 end
 cache_write(post_id, 'news.json', news.to_json)
 
-# Filter out low-credibility sources
 BLOCKLISTED_DOMAINS = %w[
   ren.tv tsargrad.tv epochtimes.com
 ].freeze
-all_articles = news['as_dicts'].reject do |a|
-  source_url = a['source_url'] || ''
-  BLOCKLISTED_DOMAINS.any? { |domain| source_url.include?(domain) }
-end
 
-# Remove truncated articles (summary cut off by the API)
-all_articles.reject! { |a| (a['summary'] || '').include?('[truncated:') }
-
-# Deduplicate near-identical articles from the same source
-articles = []
+# One seen-set across blocks, latest first, so an article returned by both
+# searches is kept only in the latest block.
 seen = Set.new
-all_articles.each do |a|
-  title = (a['eng_title'] || '').downcase.gsub(/[^a-z0-9\s]/, '')
-  source_id = a['source_id'] || ''
-  key = "#{source_id}::#{title[0..80]}"
-  unless seen.include?(key)
-    seen.add(key)
-    articles << a
-  end
+blocks = AskNews.blocks(news).transform_values do |block_articles|
+  block_articles.select do |a|
+    source_url = a['source_url'] || ''
+    next false if BLOCKLISTED_DOMAINS.any? { |domain| source_url.include?(domain) }
+    next false if (a['summary'] || '').include?('[truncated:')
+
+    title = (a['eng_title'] || '').downcase.gsub(/[^a-z0-9\s]/, '')
+    seen.add?("#{a['source_id']}::#{title[0..80]}")
+  end.first(10)
 end
-articles = articles[0...10]
 
 news_prompt = ERB.new(<<~NEWS_PROMPT_TEMPLATE, trim_mode: '-')
   Forecast Related News:
-  <articles>
-  <%- articles.each do |article| -%>
-  <article>
-  Title: <%= article['eng_title'] %>
-  Source: [<%= article['source_id'] %>](<%= article['article_url'] %>)
-  Publish Date: <%= article['pub_date'] %>
-  Summary: <%= article['summary'] %>
-  </article>
+
+  ## Developments in the last 48 hours
+  <recent_articles>
+  <%- if blocks['latest'].empty? -%>
+  No coverage in the last 48 hours.
   <%- end -%>
-  </articles>
+  <%- blocks['latest'].each do |article| -%>
+  <%= render_article.call(article) -%>
+  <%- end -%>
+  </recent_articles>
+
+  ## Background coverage
+  <background_articles>
+  <%- blocks['archive'].each do |article| -%>
+  <%= render_article.call(article) -%>
+  <%- end -%>
+  </background_articles>
 NEWS_PROMPT_TEMPLATE
+
+render_article = lambda do |article|
+  <<~ARTICLE
+    <article>
+    Title: #{article['eng_title']}
+    Source: [#{article['source_id']}](#{article['article_url']})
+    Publish Date: #{article['pub_date']}
+    Summary: #{article['summary']}
+    </article>
+  ARTICLE
+end
 
 news_md = news_prompt.result(binding)
 cache_write(post_id, 'outputs/news.md', news_md)

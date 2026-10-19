@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'asknews'
+
 module CommentBuilder
   MAX_COMMENT_LENGTH = 10_000
 
@@ -62,7 +64,7 @@ module CommentBuilder
     return nil unless File.exist?(news_path)
 
     news = JSON.parse(File.read(news_path))
-    articles = news['as_dicts'] || []
+    articles = AskNews.articles(news)
     return nil if articles.empty?
 
     dates = articles.map { |a| a['pub_date'] }.compact.sort
@@ -254,7 +256,7 @@ module CommentBuilder
     return nil unless File.exist?(news_path)
 
     news = JSON.parse(File.read(news_path))
-    articles = news['as_dicts'] || []
+    articles = AskNews.articles(news)
     return nil if articles.empty?
 
     dates = articles.map { |a| a['pub_date'] }.compact.sort
