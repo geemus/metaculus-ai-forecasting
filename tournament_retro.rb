@@ -98,43 +98,39 @@ retro_prompt = <<~RETRO_PROMPT
   - `<error>` — computed from the outcome. Binary: which side of 50% the forecast fell relative to the resolution, the gap in points, and Brier score. Numeric/discrete: P10/P50/P90, the P50 error, and the forecast percentile at which the resolution landed — peer score depends on the density there, so a small P50 error can still score badly when the distribution is narrow. Multiple choice: probability and rank of the correct option, and Brier score.
 
   #{comment_coverage}
-  ## Forecaster System Prompt (verbatim)
+  ## Pipeline Prompts (verbatim)
 
-  #{SUPERFORECASTER_SYSTEM_PROMPT}
+  These are every prompt the pipeline sends, labelled by file or constant. They already carry many rules: check here before recommending anything, and quote from here when you do.
 
-  ## Delphi Revision Prompt Template
-
-  #{File.read('lib/prompt_templates/forecast_delphi.erb')}
-
-  ## Consensus Meta-Forecaster System Prompt (verbatim)
-
-  #{CONSENSUS_SYSTEM_PROMPT}
-
-  ### Consensus Meta-Forecaster Prompt Template
-
-  #{File.read('lib/prompt_templates/forecast_consensus.erb')}
-
+  #{pipeline_prompts_for_retro}
   ## Forecast Data
 
   <forecasts>
   #{data.join.strip}
   </forecasts>
 
-  Review this data thoroughly to improve the pipeline, then:
+  ## Analysis
+
+  Review this data thoroughly to improve the pipeline:
     - identify commonalities among the lowest and highest scores
-    - analyze error patterns: direction (over/under confident), magnitude, and question-type trends
+    - analyze error patterns: direction (over/under confident), magnitude, and question-type trends — including whether extreme probabilities (near 0% or 100%) are well calibrated
     - where structured comment data is available: evaluate forecaster-level performance by provider — do certain providers consistently outperform? Is the Delphi revision stage causing herding (convergence toward median without accuracy gain, visible in pre_revision vs. value) or productive refinement (movement toward resolution)?
     - evaluate whether the meta-forecaster identified the right divergences between forecasters, and whether the underlying forecaster reasoning revealed flawed assumptions, missing base rates, or confirmation bias
     - assess research quality by comparing `<research_summary>` content against question outcomes — are there recurring research gaps?
     - identify which question types the pipeline performs best/worst on and hypothesize why (prompt fit, inherent difficulty, research quality, aggregation dynamics)
-    - for each error pattern, identify which pipeline stage is the most likely source: research gaps, forecaster prompt issues, revision dynamics (e.g., herding toward consensus), or consensus synthesis failures
-    - recommend specific, actionable improvements to:
-      a. The forecaster system prompt (instructions to add, remove, or reweight — e.g., should the status-quo bias be stronger or weaker? Are extreme probabilities (near 0% or 100%) well calibrated, or would a floor/ceiling help?)
-      b. The research phase (what information should be gathered differently to prevent recurring errors)
-      c. The revision phase (is seeing peer forecasts causing herding or productive refinement? Use pre_revision vs. value data)
-      d. The consensus process (aggregation approach, extremization rules, divergence handling)
-      e. Question-type-specific handling (prompt modifications per type — binary, numeric, discrete, multiple-choice)
-    - recommend how to improve this retro analysis prompt itself to produce more actionable pipeline feedback
+    - for each error pattern, identify which pipeline stage is the most likely source: research gaps, forecaster prompt issues, revision dynamics, or consensus synthesis failures
+
+  ## Recommendations
+
+  A retro that only adds rules makes the prompts longer and more redundant each cycle, and a long list of changes drawn from one tournament mostly fits noise. Follow these rules:
+
+  1. **Top changes (at most 3)**, ranked by expected score impact. A change may target any stage — research, forecaster, question-type, revision, or consensus prompts, or the aggregation code. For each:
+     - Evidence: the question ids behind it and how many. Do not recommend a change supported by fewer than 3 questions; list such patterns under **Watch list** instead, one line each.
+     - Existing coverage: quote the current prompt text that already addresses this pattern, or state that you checked the prompts above and none does. If an existing instruction covers the pattern but the forecasts show it failing, prefer rewording, strengthening, or replacing it over adding a new one.
+     - Edit: the file or constant, the exact current text (or "new"), and the exact proposed text.
+  2. **Remove or merge (required)**: instructions that duplicate each other, that the data gives no evidence are helping, or that the forecasts visibly ignore — proposed for deletion or merging, in the same current/proposed format. Aim for your edits, taken together, to shorten the prompts.
+  3. **Watch list**: patterns seen in fewer than 3 questions, one line each with the question ids.
+  4. **This retro prompt**: at most one change, under the same rules — quote the text it replaces, and prefer a removal or rewording to an addition.
 RETRO_PROMPT
 
 retro = llm.eval({ 'role': 'user', 'content': retro_prompt })
