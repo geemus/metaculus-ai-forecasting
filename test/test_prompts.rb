@@ -390,4 +390,17 @@ class TestPrompts < Minitest::Test
     end
     assert_includes bundle, 'What would make the favorite lose?'
   end
+
+  # The parser warning is stated once, in FORMAT_REINFORCEMENT, which is
+  # appended after every type-specific output instruction.
+  def test_parser_warning_lives_only_in_format_reinforcement
+    mc = multiple_choice_forecast_prompt(build_question(type: 'multiple_choice', options: MC_OPTIONS))
+    [BINARY_FORECAST_PROMPT, NUMERIC_FORECAST_PROMPT, mc].each { |prompt| refute_includes prompt, 'parser' }
+    assert_includes FORMAT_REINFORCEMENT, 'percent sign or unit'
+    @research_output = 'research summary'
+    %w[binary numeric multiple_choice].each do |type|
+      prompt = prompt_with_type(nil, build_question(type: type, options: MC_OPTIONS), SHARED_FORECAST_PROMPT_TEMPLATE)
+      assert_equal 1, prompt.scan('automated parser').size, type
+    end
+  end
 end

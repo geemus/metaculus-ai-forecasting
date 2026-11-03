@@ -77,14 +77,14 @@ SHARED_FORECAST_PROMPT_TEMPLATE = ERB.new(File.read('./lib/prompt_templates/shar
 BINARY_FORECAST_PROMPT = <<~BINARY_FORECAST_PROMPT
   - At the end of your forecast, provide a single, precise final probability in the specified format.
     - You may assign any probability if supported by strong reasoning. Extreme probabilities (below 1% or above 99%) require strong evidence but should not be avoided if the evidence supports them.
-    - Write your final prediction in this format (an automated parser reads this line, so the percent sign is required):
+    - Write your final prediction in this format:
   <probability>
   X%
   </probability>
 BINARY_FORECAST_PROMPT
 
 NUMERIC_FORECAST_PROMPT = <<~NUMERIC_FORECAST_PROMPT
-  - At the end of your forecast, provide precise, percentile final predictions of values in the given units and range. Report a single value with its unit on each line — an automated parser reads each percentile and cannot interpret a range of values.
+  - At the end of your forecast, provide precise, percentile final predictions of values in the given units and range. Report a single value with its unit on each line, never a range.
     - Aim for a P50 that minimises symmetric absolute error. Before your percentiles, lay the anchor out explicitly, because a baseline left unstated lets an unexamined number stand as the estimate:
       - the latest observed value of this quantity, with its as-of date and source;
       - the baseline you are anchoring on, and its value. Match it to the quantity, because the wrong anchor biases the whole distribution: the current level for a flow variable (quarterly revenue, annual emissions); the long-run average for a mean-reverting ratio (a long-run interest rate, a demographic rate); the current spot or front-month futures price for a liquid market price, rate, commodity, or crypto level — never a multi-year average for a near-term market question, which manufactures mean-reversion the market is not pricing;
@@ -118,7 +118,7 @@ def multiple_choice_forecast_prompt(question)
       - State the reference-class favorite-loss rate as a number: over a comparable horizon, how often does the leader in this kind of field lose? Set the favorite's probability near that frequency, and depart from it only for named, current evidence strong enough to justify the gap.
       - Judge the favorite against that reference class rather than against how strong it looks today. Volatile fields where the leader changes often — sports, AI and benchmark leaderboards, crowded races with many plausible winners — carry high favorite-loss rates, so a high favorite probability there is a claim that needs overwhelming, current evidence; absent that evidence, move the probability toward the reference-class rate.
     - At the end of your forecast, provide precise, probabilistic final predictions for each option, reporting the probability itself and nothing else.
-      - Write your final predictions in this format (an automated parser reads every line and submits them as a distribution, so the percent sign is required on each and values that break the bounds check distort every option):
+      - Write your final predictions in this format:
     <probabilities>
     #{options_format}
     </probabilities>
@@ -181,7 +181,7 @@ def append_type_instructions(prompt, question)
 end
 
 FORMAT_REINFORCEMENT = <<~FORMAT_REINFORCEMENT
-  IMPORTANT: An automated parser extracts your final answer from the exact XML tags specified above. Emit those tags verbatim — an answer in JSON, markdown, or any other format is silently dropped, and your forecast is not recorded.
+  IMPORTANT: An automated parser extracts your final answer from the exact XML tags specified above, line by line. Emit those tags verbatim, with exactly one value per line and the percent sign or unit shown in the format — an answer in JSON, markdown, a range, or any other format is silently dropped, and your forecast is not recorded.
 FORMAT_REINFORCEMENT
 
 FEASIBILITY_CHECK_PROMPT = <<~FEASIBILITY_CHECK_PROMPT
