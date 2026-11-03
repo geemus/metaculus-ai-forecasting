@@ -288,6 +288,24 @@ class TestPrompts < Minitest::Test
     assert_includes prompt, 'extrapolating the recent rate is the default'
   end
 
+  # ─── research brief carries no shared outcome estimate ─────────────────────
+
+  def test_research_prompt_withholds_outcome_estimate_from_brief
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    assert_includes prompt, '### 4. Uncertainty Drivers'
+    refute_includes prompt, 'Uncertainty Range'
+    assert_includes prompt, 'Give no overall probability, probability range, central estimate'
+    assert_includes prompt, 'Forecasters never see this summary'
+  end
+
+  def test_research_brief_sections_match_across_prompts
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'Surprise Signals, Uncertainty Drivers'
+  end
+
   def test_research_prompt_requests_change_magnitude_and_rate_trend
     @forecast_prompt = 'forecast context'
     @news_output = 'news'
