@@ -132,7 +132,9 @@ module CommentBuilder
       pre_revision = if original
                        format_forecast_value(question, original)
                      else
-                       value # fallback if original not available
+                       # Never copy the revised value: that reads as zero Delphi movement.
+                       warn "WARNING: no original forecast for #{provider}; pre_revision unavailable"
+                       'N/A'
                      end
 
       confidence = forecast.extracted_content('confidence') || 'N/A'
