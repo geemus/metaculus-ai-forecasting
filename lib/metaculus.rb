@@ -521,102 +521,64 @@ class Metaculus
     end
 
     def my_prediction
-      latest = question.dig('my_forecasts', 'latest')
-      return 'No forecast' unless latest
-
-      values = latest['forecast_values']
-      return 'No forecast values' unless values
+      values = my_forecast_values
+      return 'No forecast' unless values
 
       case type
       when 'binary'
-        p_yes = (values[1] * 100).round(1)
-        "#{p_yes}% Yes"
+        "#{(values[1] * 100).round(1)}% Yes"
       when 'numeric', 'discrete'
-        cdf = values
-        x_axis = scaling['continuous_range']
-        if x_axis && !x_axis.empty?
-          idx = cdf.index { |v| v >= 0.5 } || (cdf.length - 1)
-          x_val = x_axis[idx]
-          range = upper_bound - lower_bound
-          x_span = x_axis.last - x_axis.first
-          actual = if x_span.positive?
-                     (lower_bound + x_val * range / x_span).round(2)
-                   else
-                     x_val.round(2)
-                   end
-          unit_str = units.empty? ? '' : " #{units}"
-          "#{actual}#{unit_str} (P50)"
-        else
-          # fallback: show first few CDF values
-          "CDF array (#{cdf.length} points)"
-        end
+        return "CDF array (#{values.length} points)" unless cdf_xaxis && !cdf_xaxis.empty?
+
+        "#{format_value(cdf_quantile(values, 0.5))} (P50)"
       when 'multiple_choice'
-        if options
-          options.zip(values).map do |opt, prob|
-            "#{opt}: #{(prob * 100).round(1)}%"
-          end.join(', ')
-        else
-          values.each_with_index.map { |v, i| "opt #{i}: #{(v * 100).round(1)}%" }.join(', ')
-        end
+        labels = options || values.each_index.map { |i| "opt #{i}" }
+        labels.zip(values).map { |opt, prob| "#{opt}: #{(prob * 100).round(1)}%" }.join(', ')
       else
         values.inspect
       end
     end
 
+    # A retro-facing summary of how the submitted forecast compares with the
+    # outcome. The direction label is computed from the outcome, and numeric
+    # summaries describe the whole distribution (P10/P50/P90 plus where the
+    # resolution fell in it), since peer score depends on more than the P50.
     def error_summary
-      res = question['resolution']&.to_f
-      return 'Not yet resolved' if res.nil?
+      return 'Not yet resolved' if question['resolution'].nil?
 
-      latest = question.dig('my_forecasts', 'latest')
-      return 'No forecast to compare' unless latest
-
-      values = latest['forecast_values']
-      return 'No forecast values' unless values
+      values = my_forecast_values
+      return 'No forecast to compare' unless values
 
       case type
-      when 'binary'
-        if res == -1
-          return 'Ambiguous resolution'
-        end
-
-        p_yes = values[1]
-        diff = (res - p_yes).abs
-        direction = if p_yes > res
-                      'overconfident in Yes'
-                    elsif p_yes < res
-                      'underconfident in Yes'
-                    else
-                      'perfect'
-                    end
-        format('Error: %<diff>.1f%% (%<direction>s)', diff: diff * 100, direction: direction)
-      when 'numeric', 'discrete'
-        cdf = values
-        x_axis = scaling['continuous_range']
-        if x_axis && !x_axis.empty?
-          idx = cdf.index { |v| v >= 0.5 } || (cdf.length - 1)
-          p50_x = x_axis[idx]
-          range = upper_bound - lower_bound
-          x_span = x_axis.last - x_axis.first
-          p50 = if x_span.positive?
-                  lower_bound + p50_x * range / x_span
-                else
-                  p50_x
-                end
-          abs_error = (res.to_f - p50).abs.round(2)
-          unit_str = units.empty? ? '' : " #{units}"
-          "Absolute error: #{abs_error}#{unit_str} (resolved #{res}, predicted P50 #{p50.round(2)})"
-        else
-          'Cannot compute error (no scaling range)'
-        end
-      when 'multiple_choice'
-        correct_idx = res.to_i
-        prob_assigned = values[correct_idx] || 0
-        surprisal = ((1 - prob_assigned) * 100).round(1)
-        correct_option = options ? (options[correct_idx] || "option #{correct_idx}") : "option #{correct_idx}"
-        "Surprisal: #{surprisal}% (assigned #{(prob_assigned * 100).round(1)}% to correct answer '#{correct_option}')"
-      else
-        'Unknown question type'
+      when 'binary' then binary_error_summary(values)
+      when 'numeric', 'discrete' then continuous_error_summary(values)
+      when 'multiple_choice' then multiple_choice_error_summary(values)
+      else 'Unknown question type'
       end
+    end
+
+    # Value at quantile q of a submitted CDF. continuous_range is already in
+    # question units (and log-spaced for log-scaled questions), so the value is
+    # read straight off it, interpolating between grid points.
+    def cdf_quantile(cdf, q)
+      xs = cdf_xaxis
+      idx = cdf.index { |v| v >= q }
+      return xs.last if idx.nil?
+      return xs[idx] if idx.zero? || cdf[idx] == cdf[idx - 1]
+
+      frac = (q - cdf[idx - 1]) / (cdf[idx] - cdf[idx - 1])
+      xs[idx - 1] + frac * (xs[idx] - xs[idx - 1])
+    end
+
+    # Forecast CDF evaluated at x (the forecast percentile the outcome landed on).
+    def cdf_at(cdf, x)
+      xs = cdf_xaxis
+      return cdf.first if x <= xs.first
+      return cdf.last if x >= xs.last
+
+      idx = xs.index { |v| v >= x }
+      frac = (x - xs[idx - 1]) / (xs[idx] - xs[idx - 1])
+      cdf[idx - 1] + frac * (cdf[idx] - cdf[idx - 1])
     end
 
     def my_comment
@@ -718,6 +680,79 @@ class Metaculus
 
     def cdf_xaxis
       @cdf_xaxis ||= scaling['continuous_range']
+    end
+
+    def my_forecast_values
+      question.dig('my_forecasts', 'latest', 'forecast_values')
+    end
+
+    def format_value(value)
+      unit_str = units.to_s.empty? ? '' : " #{units}"
+      "#{value.round(2)}#{unit_str}"
+    end
+
+    def binary_outcome
+      case question['resolution'].to_s.downcase
+      when 'yes', '1', '1.0' then 1.0
+      when 'no', '0', '0.0' then 0.0
+      end
+    end
+
+    def binary_error_summary(values)
+      outcome = binary_outcome
+      return "Ambiguous or annulled resolution (#{question['resolution']})" if outcome.nil?
+
+      p_yes = values[1]
+      gap = ((outcome - p_yes).abs * 100).round(1)
+      resolved = outcome == 1.0 ? 'Yes' : 'No'
+      direction = if gap.zero?
+                    'exact'
+                  elsif p_yes >= 0.5 ? outcome == 1.0 : outcome.zero?
+                    "right side, #{gap} pts short of #{resolved}"
+                  else
+                    "wrong side, #{gap} pts from #{resolved}"
+                  end
+      format('Forecast %<p>.1f%% Yes, resolved %<r>s: %<d>s; Brier %<b>.3f',
+             p: p_yes * 100, r: resolved, d: direction, b: (p_yes - outcome)**2)
+    end
+
+    def continuous_error_summary(values)
+      return 'Cannot compute error (no scaling range)' unless cdf_xaxis && !cdf_xaxis.empty?
+
+      p10, p50, p90 = [0.1, 0.5, 0.9].map { |q| cdf_quantile(values, q) }
+      spread = "P10 #{format_value(p10)} / P50 #{format_value(p50)} / P90 #{format_value(p90)}"
+      raw = question['resolution'].to_s
+      case raw
+      when 'above_upper_bound'
+        "Resolved above upper bound; forecast #{spread}; " \
+          "#{((1 - values.last) * 100).round(1)}% of mass above the upper bound"
+      when 'below_lower_bound'
+        "Resolved below lower bound; forecast #{spread}; " \
+          "#{(values.first * 100).round(1)}% of mass below the lower bound"
+      else
+        res = Float(raw, exception: false)
+        return "Unparseable resolution (#{raw}); forecast #{spread}" if res.nil?
+
+        pct = (cdf_at(values, res) * 100).round(1)
+        error = (res - p50).abs
+        rel = p50.zero? ? '' : format(' (%.1f%% of P50)', error / p50.abs * 100)
+        inside = res.between?(p10, p90) ? 'inside' : 'outside'
+        "Resolved #{format_value(res)}; forecast #{spread}; P50 error #{format_value(error)}#{rel}; " \
+          "resolution at forecast percentile #{pct} (#{inside} P10–P90)"
+      end
+    end
+
+    def multiple_choice_error_summary(values)
+      raw = question['resolution']
+      idx = raw.is_a?(Integer) ? raw : options&.index(raw.to_s)
+      return "Unmatched resolution (#{raw})" if idx.nil? || values[idx].nil?
+
+      assigned = values[idx]
+      rank = values.sort.reverse.index(assigned) + 1
+      label = options ? options[idx] : "option #{idx}"
+      format("Assigned %<a>.1f%% to correct answer '%<l>s' (ranked %<r>d of %<n>d); Brier %<b>.3f",
+             a: assigned * 100, l: label, r: rank, n: values.length,
+             b: values.each_with_index.sum { |v, i| (v - (i == idx ? 1 : 0))**2 })
     end
 
     def latest_aggregations
