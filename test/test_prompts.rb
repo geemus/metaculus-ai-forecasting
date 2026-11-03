@@ -247,14 +247,13 @@ class TestPrompts < Minitest::Test
     @research_output = 'research summary'
     prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
     assert_includes prompt, 'Express that "no change" prior as a number'
-    assert_includes prompt, 'do not substitute a bare "no."'
-    assert_includes prompt, '"no is the default" is not such evidence'
+    assert_includes prompt, 'moving below it requires the same named, case-specific evidence as moving above it'
   end
 
   def test_situation_snapshot_separates_base_rate_from_status_quo
     @research_output = 'research summary'
     prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
-    assert_includes prompt, 'never collapse the base rate to the status-quo outcome'
+    assert_includes prompt, 'and separately the status-quo outcome if nothing changed'
   end
 
   # ─── research provenance: retrieval timestamp ──────────────────────────────
@@ -293,7 +292,7 @@ class TestPrompts < Minitest::Test
     @research_output = 'research summary'
     prompt = prompt_with_type(nil, build_question(type: 'numeric'), SHARED_FORECAST_PROMPT_TEMPLATE)
     assert_includes prompt, 'accelerating, flat, decelerating, or plateauing'
-    assert_includes prompt, 'a rate is only readable across two dated observations'
+    assert_includes prompt, 'undetermined, if the research gives too few dated observations'
   end
 
   def test_shared_prompt_guards_cumulative_totals_against_decrease
@@ -332,5 +331,84 @@ class TestPrompts < Minitest::Test
     prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
     assert_includes prompt, 'saturation or control mechanism'
     assert_includes prompt, 'change per interval rather than the level alone'
+  end
+
+  # ─── de-duplication: each rule lives in one place ──────────────────────────
+
+  def research_prompt
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    RESEARCH_PROMPT_TEMPLATE.result(binding)
+  end
+
+  # The Perplexity research agent has web_search, finance_search, and
+  # fetch_url only, so the research prompt must not advertise a calculator.
+  def test_research_prompt_does_not_advertise_missing_calculator_tool
+    refute_includes research_prompt, 'calculate'
+  end
+
+  def test_researcher_uses_one_stale_label_format
+    refute_includes RESEARCHER_SYSTEM_PROMPT, '{Stale: Projection issued'
+    refute_includes RESEARCHER_SYSTEM_PROMPT, 'Data Freshness'
+    assert_includes research_prompt, '{Stale: Last observation YYYY-MM-DD'
+    assert_includes research_prompt, 'not the publication date'
+  end
+
+  # Nothing parses the Verdict line, so the prompt must not claim otherwise.
+  def test_feasibility_prompt_makes_no_parser_claim
+    refute_includes FEASIBILITY_CHECK_PROMPT, 'parser'
+  end
+
+  def test_feasibility_check_lives_only_in_user_prompt
+    refute_includes SUPERFORECASTER_SYSTEM_PROMPT, 'feasibility_check'
+    refute_includes CONSENSUS_SYSTEM_PROMPT, 'feasibility_check'
+  end
+
+  def test_multiple_choice_range_rule_lives_in_bounds_check
+    q = build_question(type: 'multiple_choice', options: MC_OPTIONS)
+    assert_includes feasibility_check_prompt(q), 'between 0.1% and 99.9%'
+    refute_includes multiple_choice_forecast_prompt(q), '0.1%'
+  end
+
+  def test_numeric_anchor_guidance_lives_only_in_numeric_prompt
+    refute_includes SUPERFORECASTER_SYSTEM_PROMPT, 'mean-reverting'
+    assert_includes NUMERIC_FORECAST_PROMPT, 'mean-reverting ratio'
+    assert_includes NUMERIC_FORECAST_PROMPT, 'symmetric absolute error'
+  end
+
+  def test_strongest_case_against_is_a_single_step
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'Strongest case against'
+    refute_includes prompt, 'Alternative Scenario'
+    refute_includes prompt, 'came in unfavorably'
+    refute_includes SUPERFORECASTER_SYSTEM_PROMPT, 'strongest argument against'
+  end
+
+  def test_shared_prompt_does_not_ask_to_ignore_evidence_already_shown
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    refute_includes prompt, 'before reading any question-specific evidence'
+  end
+
+  def test_consensus_rules_not_repeated_between_system_and_template
+    refute_includes CONSENSUS_SYSTEM_PROMPT, 'mechanical aggregate'
+    refute_includes File.read('./lib/prompt_templates/forecast_consensus.erb'), 'Work only from the forecasts'
+    @revised_forecasts = []
+    @mechanical_baseline = nil
+    prompt = consensus_prompt_with_type(nil, build_question(type: 'binary'), FORECAST_CONSENSUS_PROMPT_TEMPLATE)
+    assert_includes prompt, 'never averaged into the consensus'
+  end
+
+  # ─── retro sees every prompt ───────────────────────────────────────────────
+
+  def test_retro_prompt_bundle_includes_every_pipeline_prompt
+    bundle = pipeline_prompts_for_retro
+    %w[research.erb shared_forecast.erb _situation_snapshot.erb forecast_delphi.erb forecast_consensus.erb
+       RESEARCHER_SYSTEM_PROMPT SUPERFORECASTER_SYSTEM_PROMPT CONSENSUS_SYSTEM_PROMPT FEASIBILITY_CHECK_PROMPT
+       BINARY_FORECAST_PROMPT NUMERIC_FORECAST_PROMPT multiple_choice_forecast_prompt].each do |name|
+      assert_includes bundle, name
+    end
+    assert_includes bundle, 'What would make the favorite lose?'
   end
 end
