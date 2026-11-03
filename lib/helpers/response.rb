@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../aggregation'
+require_relative '../prompt_version'
 
 module ResponseHelpers
   def extracted_content(*tags)
@@ -80,6 +81,19 @@ module ResponseHelpers
 
   def stripped_content(*tags)
     strip_xml(content, *tags)
+  end
+
+  # Prompt version this response was generated under (nil for responses
+  # cached before stamping was added).
+  def prompt_version
+    data['prompt_version']
+  end
+
+  # Record the current prompt version on a freshly generated response,
+  # before it is cached.
+  def stamp_prompt_version!
+    data.merge!(PromptVersion.stamp)
+    self
   end
 
   def to_json(*args)

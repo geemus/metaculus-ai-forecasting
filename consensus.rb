@@ -25,7 +25,7 @@ begin
     cache_write(post_id, 'inputs/consensus.md', consensus_prompt)
     consensus = llm.eval({ 'role': 'user', 'content': consensus_prompt })
     cache_write(post_id, 'outputs/consensus.md', consensus.content)
-    consensus.to_json
+    consensus.stamp_prompt_version!.to_json
   end
   consensus = Response.new(provider, json: consensus_json)
   puts consensus.content

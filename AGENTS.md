@@ -68,6 +68,7 @@ news.rb → tools_research.rb → forecast.rb (×3 forecasters) → revise_forec
 - **`lib/prompts.rb`** - System prompts and ERB templates. `SUPERFORECASTER_SYSTEM_PROMPT` encodes the Bayesian methodology (base rates, explicit adjustments, uncertainty calibration).
 - **`lib/response.rb`** - Parses LLM responses across providers. Extracts XML-tagged forecast values (`<probability>`, `<percentiles>`, `<probabilities>`).
 - **`lib/tools.rb`** - Defines `CALCULATOR_TOOL` (safe arithmetic via Dentaku) and `Tools.dispatch` (centralized tool-call router used by OpenRouter and DeepSeek). Web search is centralized upstream in the research phase, so forecasters have no search tool.
+- **`lib/prompt_version.rb`** - Content hash of `lib/prompts.rb` + `lib/prompt_templates/*`. Each stage stamps it into its cached JSON when it generates (cached stages are reused across runs), the pipeline comment records it per stage in `<prompt_version>`, and the retro groups questions by it.
 - **`lib/utility.rb`** - File-based caching in `tmp/{post_id}/`. All prompts and outputs are cached for auditability.
 
 ### Question Types & Output Formats

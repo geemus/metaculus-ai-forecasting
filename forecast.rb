@@ -31,5 +31,5 @@ cache(post_id, "forecasts/forecast.#{provider}.json") do
   cache_write(post_id, "outputs/forecast.#{provider}.blind.md", blind_response.content)
   puts blind_response.content
   cache_write(post_id, "outputs/forecast.#{provider}.md", blind_response.content)
-  blind_response.to_json
+  blind_response.stamp_prompt_version!.to_json
 end

@@ -15,7 +15,7 @@ module CommentBuilder
     end
 
     sections = [
-      build_pipeline_overview(post_id, question, baseline),
+      build_pipeline_overview(post_id, question, baseline, consensus_response, revised_forecasts),
       build_news_summary(post_id),
       build_research_summary(post_id),
       build_forecaster_positions(post_id, question, revised_forecasts),
@@ -29,7 +29,7 @@ module CommentBuilder
 
   # ─── Pipeline Overview ───────────────────────────────────────────────
 
-  def build_pipeline_overview(post_id, question, baseline)
+  def build_pipeline_overview(post_id, question, baseline, consensus_response = nil, revised_forecasts = [])
     news_meta = news_metadata(post_id)
 
     lines = []
@@ -40,7 +40,38 @@ module CommentBuilder
     lines << "- **Stages**: News → Research → #{Provider::FORECASTERS.size} Forecasters → Delphi Revise → Consensus"
     lines << "- **News**: #{news_meta}" if news_meta
     lines << "- **Mechanical Baseline**: #{baseline.split("\n").first}" if baseline
+    lines << "- **Prompt Version**: #{build_prompt_version(post_id, consensus_response, revised_forecasts)}"
     lines.join("\n")
+  end
+
+  # ─── Prompt Version ──────────────────────────────────────────────────
+
+  # Records which prompt version produced each stage. Stages are cached per
+  # post and can be reused across runs, so they may differ; the element's
+  # text is the shared version, or "mixed" when they disagree. Responses
+  # cached before stamping existed read as "unknown".
+  def build_prompt_version(post_id, consensus_response, revised_forecasts)
+    research = begin
+      Response.new(:open_router, json: cache_read!(post_id, 'research.json'))
+    rescue StandardError
+      nil
+    end
+    stages = {
+      'research' => [research],
+      'forecast' => load_original_forecasts(post_id),
+      'revision' => revised_forecasts,
+      'consensus' => [consensus_response]
+    }.transform_values do |responses|
+      versions = responses.map { |r| r&.prompt_version || 'unknown' }.uniq
+      versions.empty? ? 'unknown' : versions.join(',')
+    end
+
+    distinct = stages.values.flat_map { |v| v.split(',') }.uniq
+    summary = distinct.size == 1 ? distinct.first : 'mixed'
+    attrs = stages.map { |stage, version| %(#{stage}="#{xml_escape(version)}") }
+    commit = consensus_response.respond_to?(:data) && consensus_response.data['commit']
+    attrs << %(commit="#{xml_escape(commit)}") if commit
+    %(<prompt_version #{attrs.join(' ')}>#{xml_escape(summary)}</prompt_version>)
   end
 
   # ─── News Summary ────────────────────────────────────────────────────
