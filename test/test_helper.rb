@@ -13,6 +13,7 @@ require 'fileutils'
 require 'json'
 require 'time'
 require 'erb'
+require 'tmpdir'
 require 'formatador'
 
 Thread.current[:formatador] = Formatador.new

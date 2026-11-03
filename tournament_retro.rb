@@ -16,6 +16,7 @@ def extract_full_elements(text, tag)
 end
 
 data = []
+prompt_versions = []
 missing_comments = 0
 questions.reject! { |q| q.spot_peer_score.nil? }
 questions.sort_by!(&:spot_peer_score)
@@ -29,6 +30,8 @@ questions.each_with_index do |q, _i|
   consensus_analysis = extract_xml(comment_text, 'consensus_analysis').first
   forecasters = extract_full_elements(comment_text, 'forecaster')
   final_forecast = extract_xml(comment_text, 'probability', 'percentiles', 'probabilities').first
+  prompt_version_element = extract_full_elements(comment_text, 'prompt_version').first
+  prompt_versions << PromptVersion.from_comment(comment_text)
 
   # Build structured comment section
   comment_tags = []
@@ -36,6 +39,7 @@ questions.each_with_index do |q, _i|
   forecasters.each { |f| comment_tags << "  #{f}" }
   comment_tags << "<consensus_analysis>#{consensus_analysis}</consensus_analysis>" if consensus_analysis
   comment_tags << "<final_forecast>#{final_forecast}</final_forecast>" if final_forecast
+  comment_tags << prompt_version_element if prompt_version_element
   # Fallback: include raw comment for non-pipeline questions or when no tags match
   comment_tags << "<raw_comment>#{comment_text}</raw_comment>" if comment_tags.empty? && !comment_text.empty?
 
@@ -44,6 +48,7 @@ questions.each_with_index do |q, _i|
       <id>#{q.post_id}</id>
       <title>#{q.title}</title>
       <type>#{q.type}</type>
+      <prompt_version>#{prompt_versions.last}</prompt_version>
       <spot_peer_score>#{q.spot_peer_score.round}</spot_peer_score>
       <resolution>#{q.resolution}</resolution>
       <my_prediction>#{q.my_prediction}</my_prediction>
@@ -88,6 +93,7 @@ retro_prompt = <<~RETRO_PROMPT
     - Content: Key argument summary
   - `<consensus_analysis>` — The meta-forecaster's synthesis reasoning
   - `<final_forecast>` — The submitted consensus forecast value
+  - `<prompt_version>` — Prompt version per stage (research, forecast, revision, consensus); see Prompt Versions below
   - `<raw_comment>` — Fallback for questions without pipeline-structured comments
 
   Questions without pipeline comments use `<raw_comment>` only — analyze these using score/prediction patterns.
@@ -98,6 +104,7 @@ retro_prompt = <<~RETRO_PROMPT
   - `<error>` — computed from the outcome. Binary: which side of 50% the forecast fell relative to the resolution, the gap in points, and Brier score. Numeric/discrete: P10/P50/P90, the P50 error, and the forecast percentile at which the resolution landed — peer score depends on the density there, so a small P50 error can still score badly when the distribution is narrow. Multiple choice: probability and rank of the correct option, and Brier score.
 
   #{comment_coverage}
+  #{PromptVersion.retro_section(prompt_versions)}
   ## Pipeline Prompts (verbatim)
 
   These are every prompt the pipeline sends, labelled by file or constant. They already carry many rules: check here before recommending anything, and quote from here when you do.

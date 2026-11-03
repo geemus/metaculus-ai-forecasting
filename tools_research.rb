@@ -156,7 +156,7 @@ cache(post_id, 'research.json') do
         'total_tokens' => response.dig('usage', 'total_tokens') || 0
       },
       'model' => response['model'] || 'anthropic/claude-opus-5'
-    }
+    }.merge(PromptVersion.stamp)
 
     JSON.pretty_generate(openai_compatible)
   rescue JSON::ParserError

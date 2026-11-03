@@ -64,5 +64,5 @@ cache(post_id, "forecasts/revision.#{provider}.json") do
     warn "WARNING: failed to measure revision anchoring delta: #{e.message}"
   end
 
-  revision.to_json
+  revision.stamp_prompt_version!.to_json
 end
