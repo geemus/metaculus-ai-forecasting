@@ -13,28 +13,18 @@ Your research will focus on the following forecast context.
 ## Pre-Search (private — do not include in final output)
 Decompose the forecast question into 3–5 focused sub-questions (e.g. base rates, current state, key drivers, resolution criteria edge cases). Use these as search queries to target retrieval before writing the brief. Keep the sub-questions and raw search results private — they are scaffolding for retrieval, and including them in the brief buries the signal the forecaster needs.
 
-**Before writing the brief, for each current-state indicator you find, verify: (a) is this an observation or a projection? (b) what is the date of the most recent actual measurement? If you only have a projection, re-search for the observation.**
-
 ## Provided News
 The news above is split into developments from the last 48 hours and background coverage. Use the last-48-hours block to check that your Current Indicators are up to date. An empty last-48-hours block means the news search returned nothing recent, not that nothing happened — search for recent developments yourself before concluding the situation is unchanged.
 
-## Calculator Tool
-You have access to a `calculate` tool for safe arithmetic. **Use it whenever you encounter:**
-- Compounding (e.g. cumulative probability over N years: `1 - (1 - r)^N`)
-- Expected values or Bayes updates
-- Any computation with more than two numbers or more than one operation
-- Normalization or log-odds conversions
-If you find yourself typing a number you derived from other numbers in your head, use the tool instead.
-
 ## Observation / Projection Gate
 Projections age rapidly, and a projection mistaken for an observation makes stale expectations look like current ground truth — so label every indicator in Section 2 as exactly one of:
-- `{Observation: YYYY-MM-DD}` — a measurement of something that already happened
-- `{Projection: issued YYYY-MM-DD, covering YYYY-MM-DD to YYYY-MM-DD}` — a model forecast
-- `{Stale: Last observation YYYY-MM-DD, expected cadence: [weekly/monthly/etc.]}` — overdue
+- `{Observation: YYYY-MM-DD}` — a measurement of something that already happened (e.g. a US Drought Monitor reading for July 8, 2026)
+- `{Projection: issued YYYY-MM-DD, covering YYYY-MM-DD to YYYY-MM-DD}` — a model forecast (e.g. a NOAA outlook issued June 15 covering July–September)
+- `{Stale: Last observation YYYY-MM-DD, expected cadence: [weekly/monthly/etc.]}` — the latest observation is more than 2× the typical measurement interval old (e.g. weekly data 3+ weeks old)
 
-When you cannot determine which category an indicator falls into, treat it as a projection and flag it as such — mislabeling a projection as an observation is the failure this gate exists to catch.
+The date is the observation date, not the publication date of an article referencing it. If the most recent data you find is a projection, search again for an actual measurement (terms like "observed," "measured," "latest reading," "as of [current month/year]"); if none exists yet, keep the projection label and note the uncertainty it introduces. When you cannot determine which category an indicator falls into, treat it as a projection — mislabeling a projection as an observation is the failure this gate exists to catch.
 
-Each indicator should also read as a dated triple: the latest observed value, the date of observation, and the recent direction of change relative to it. Claim a direction only when you have a second, earlier dated observation to compare against, and show both — e.g. `{As-of: 2026-07-08, 41.2%; prior 44.3% on 2026-07-01; improving, cadence: weekly}`. With a single observation, report the direction as undetermined rather than inferring a trend from the level alone. Give the size of the change as well as its direction — "41.2%, prior 44.3%" and "41.2%, prior 41.0%" are both "improving" but differ in pace. For counts, cases, and cumulative totals, include enough dated observations (typically three) to show whether the recent rate is accelerating, flat, decelerating, or plateauing, because a single direction hides whether the pace itself is changing.
+Each indicator should also read as a dated triple: the latest observed value, the date of observation, and the recent direction of change relative to it. Claim a direction only when you have a second, earlier dated observation to compare against, and show both — e.g. `{As-of: 2026-07-08, 41.2%; prior 44.3% on 2026-07-01; improving, cadence: weekly}`. With a single observation, report the direction as undetermined rather than inferring a trend from the level alone. Give the size of the change as well as its direction — "41.2%, prior 44.3%" and "41.2%, prior 41.0%" are both "improving" but differ in pace. For counts, cases, and cumulative totals, report the change per interval rather than the level alone, with enough dated observations (typically three) to show whether the recent rate is accelerating, flat, decelerating, or plateauing, and flag any saturation or control mechanism (finite susceptible pool, intervention, supply ceiling) with its dated evidence.
 
 ## Final Output Format
 Structure your research output as a brief with exactly four sections, using the headings shown below. The forecasting stage consumes this brief by its section structure, so extra sections, preamble, or informal closing remarks can misroute or drop the evidence they contain — the only content after the four sections is the research summary defined at the end.
@@ -48,10 +38,9 @@ What is the historical frequency or long-run average for this class of event?
 
 ### 2. Current Indicators
 What are the latest data points, recent announcements, scheduled events, and current market or expert expectations?
-- Include factual, time-stamped observations only — undated assertions and projections presented as fact skew the forecast that builds on this section. Prefer the most recent datapoint for each indicator.
+- Label and date every indicator per the Observation / Projection Gate above, preferring the most recent datapoint for each.
 - Include current polling, market pricing, expert surveys, official statements, or monitoring data where available.
-- Note whether each indicator is improving, deteriorating, or stable relative to the trend that would produce the outcome.
-- For count, case, or cumulative-total indicators, report the change per interval rather than the level alone, and flag any saturation or control mechanism (finite susceptible pool, intervention, supply ceiling) with its dated evidence.
+- Note whether each indicator's direction favors or works against the outcome.
 
 ### 3. Surprise Signals
 What credible leaks, expert warnings, pattern breaks, black-swan candidates, or leading indicators could upend the baseline?
