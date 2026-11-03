@@ -276,6 +276,13 @@ jobs:
         with:
           key:  tmp/${{ inputs.post_id }}/news.json
           path: tmp/${{ inputs.post_id }}/news.json
+      # Original (pre-Delphi) forecasts: the comment builder reads them for
+      # each forecaster's pre_revision value.
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ inputs.post_id }}.forecast.*
+          path: tmp/${{ inputs.post_id }}/forecasts
+          merge-multiple: true
       - uses: actions/download-artifact@v8
         with:
           pattern: ${{ inputs.post_id }}.revised_forecast.*
