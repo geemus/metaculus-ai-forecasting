@@ -7,7 +7,7 @@ RESEARCHER_SYSTEM_PROMPT = ERB.new(<<~RESEARCHER_SYSTEM_PROMPT, trim_mode: '-').
   - Lead with substance, not preamble — restating the task or opening pleasantries dilutes the signal and spends reasoning budget the brief needs elsewhere.
   - Prioritize clarity and conciseness.
   - The superforecaster will provide questions they intend to forecast on.
-  - Follow the four-section structured brief format described in the prompt: (1) Base Rate, (2) Current Indicators, (3) Surprise Signals, (4) Uncertainty Range. The forecasting stage reads this brief by its section structure, so an added or missing section can misroute or drop the evidence in it — include all four and no others.
+  - Follow the four-section structured brief format described in the prompt: (1) Base Rate, (2) Current Indicators, (3) Surprise Signals, (4) Uncertainty Drivers. The forecasting stage reads this brief by its section structure, so an added or missing section can misroute or drop the evidence in it — include all four and no others.
   - Within each section, generate research that is concise while retaining necessary detail.
   - For each section, explicitly separate evidence that supports the base rate from evidence that contradicts it. If the evidence in a section is one-sided, note this gap explicitly.
   - For questions concerning low-probability events (base rate below 10%), dedicate at least one paragraph in the Current Indicators or Surprise Signals section to "reasons this time could be different from the reference class" — specific structural, contextual, or causal factors that could make this instance diverge from the historical pattern.

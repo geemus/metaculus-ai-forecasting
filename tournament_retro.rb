@@ -79,7 +79,7 @@ retro_prompt = <<~RETRO_PROMPT
   ## Comment Data Structure
 
   Pipeline-generated questions include structured XML in their comments:
-  - `<research_summary>` — The research phase findings used by all forecasters
+  - `<research_summary>` — The research phase's executive summary, including the researcher's own overall range for the outcome. The forecasters never see this summary or any overall range (the brief they read gives evidence and drivers only), so the distance between this range and the final forecast measures how far the forecasters moved from the researcher's view.
   - `<forecaster>` — Per-provider forecast with attributes:
     - `provider` — Model name (#{forecaster_names})
     - `value` — Final (post-revision) forecast value
