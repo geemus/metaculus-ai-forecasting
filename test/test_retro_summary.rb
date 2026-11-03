@@ -74,4 +74,20 @@ class TestRetroSummary < Minitest::Test
     q = build(type: 'multiple_choice', resolution: 'B', values: [0.6, 0.3, 0.1], options: %w[A B C])
     assert_equal "Assigned 30.0% to correct answer 'B' (ranked 2 of 3); Brier 0.860", q.error_summary
   end
+
+  # ─── comment selection ──────────────────────────────────────────────────────
+
+  def test_latest_comment_text_picks_newest_live_top_level_comment
+    comments = [
+      { 'text' => 'old run', 'created_at' => '2026-10-18T10:00:00Z', 'parent_id' => nil },
+      { 'text' => 'deleted', 'created_at' => '2026-10-21T10:00:00Z', 'is_soft_deleted' => true },
+      { 'text' => 'a reply', 'created_at' => '2026-10-22T10:00:00Z', 'parent_id' => 5 },
+      { 'text' => 'latest run', 'created_at' => '2026-10-20T22:33:58.619836Z', 'parent_id' => nil }
+    ]
+    assert_equal 'latest run', Metaculus.latest_comment_text(comments)
+  end
+
+  def test_latest_comment_text_nil_when_none
+    assert_nil Metaculus.latest_comment_text([])
+  end
 end

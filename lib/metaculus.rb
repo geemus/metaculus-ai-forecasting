@@ -57,37 +57,32 @@ class Metaculus
     new.get_comments(post_id)
   end
 
+  # The bot's own comments on a post (including private ones, which the bot's
+  # token can read). Returns the `results` array, or [] on failure.
   def get_comments(post_id)
     excon_response = with_retry do
       connection.get(
-        path: '/api2/comments/',
+        path: '/api/comments/',
         query: {
-          question: post_id,
-          author: ENV['METACULUS_BOT_ID']
+          post: post_id,
+          author: ENV['METACULUS_BOT_ID'],
+          limit: 20
         }
       )
     end
-    JSON.parse(excon_response.body)
+    JSON.parse(excon_response.body)['results'] || []
   rescue Excon::Error => e
     puts e.response.inspect
     []
   end
 
-  def self.get_question_with_posts(id)
-    new.get_question_with_posts(id)
-  end
-
-  def get_question_with_posts(id)
-    excon_response = with_retry do
-      connection.get(
-        path: "/api2/questions/#{id}/",
-        query: { include: 'posts' }
-      )
-    end
-    JSON.parse(excon_response.body)
-  rescue Excon::Error => e
-    puts e.response.inspect
-    nil
+  # Text of the most recent, non-deleted top-level comment — the pipeline
+  # posts one per forecast run, so the newest matches the latest forecast.
+  def self.latest_comment_text(comments)
+    comment = comments
+              .reject { |c| c['is_soft_deleted'] || c['parent_id'] || c['text'].to_s.empty? }
+              .max_by { |c| c['created_at'].to_s }
+    comment && comment['text']
   end
 
   def self.list_resolved_tournament_questions(tournament_id)
@@ -589,17 +584,10 @@ class Metaculus
         return comment_data['text'] if comment_data['text']
       end
 
-      # Try API endpoint that embeds posts in question detail
-      question_data = Metaculus.get_question_with_posts(post_id)
-      if question_data
-        posts = question_data['posts'] || question_data['included'] || []
-        my_post = posts.find { |p| p['author'] && p['author']['id'].to_s == ENV['METACULUS_BOT_ID'].to_s }
-        return my_post['content'] if my_post && my_post['content']
-      end
-
-      'Comments unavailable (API restricted on this endpoint)'
+      Metaculus.latest_comment_text(Metaculus.get_comments(post_id)) ||
+        'Comments unavailable (no bot comment found on this post)'
     rescue StandardError
-      'Comments unavailable (API restricted on this endpoint)'
+      'Comments unavailable (comment fetch failed)'
     end
 
     def submit(response, comment_text: nil)
