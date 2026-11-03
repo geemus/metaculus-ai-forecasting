@@ -296,8 +296,8 @@ class TestPrompts < Minitest::Test
     prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
     assert_includes prompt, '### 4. Uncertainty Drivers'
     refute_includes prompt, 'Uncertainty Range'
-    assert_includes prompt, 'Do not state an overall probability, probability range, central estimate'
-    assert_includes prompt, 'withheld from the forecasters and kept for evaluation'
+    assert_includes prompt, 'Give no overall probability, probability range, central estimate'
+    assert_includes prompt, 'Forecasters never see this summary'
   end
 
   def test_research_brief_sections_match_across_prompts
