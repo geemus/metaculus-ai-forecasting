@@ -222,6 +222,27 @@ class TestPrompts < Minitest::Test
     assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'Independent originators:'
   end
 
+  # ─── announced-action questions ────────────────────────────────────────────
+
+  def test_shared_prompt_anchors_announced_actions_on_actor_record
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, '**Announced-action questions**'
+    assert_includes prompt, 'an announcement is evidence of intent, not of completion'
+    assert_includes prompt, 'It cuts both ways'
+    assert_includes prompt, 'the remaining time carries the whole chance of completion'
+    assert_includes prompt, 'a causal story for why this time is different'
+  end
+
+  def test_research_prompt_requests_actor_track_record_and_elapsed_window
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    assert_includes prompt, 'list its comparable past deadlines with dates'
+    assert_includes prompt, 'Then state the elapsed window'
+    assert_includes prompt, 'Label statements of intent as intent'
+  end
+
   def test_shared_prompt_quantifies_status_quo_prior_as_base_rate
     @research_output = 'research summary'
     prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
