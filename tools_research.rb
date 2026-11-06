@@ -58,7 +58,7 @@ cache(post_id, 'research.json') do
 
     submission = JSON.parse(
       agent.post(path: '/v1/agent', body: {
-        model: 'anthropic/claude-opus-5',
+        model: 'anthropic/claude-opus-5-5',
         max_output_tokens: 64000,
         max_steps: 15,
         prompt_cache_key: 'high',
@@ -155,7 +155,7 @@ cache(post_id, 'research.json') do
         'completion_tokens' => response.dig('usage', 'output_tokens') || 0,
         'total_tokens' => response.dig('usage', 'total_tokens') || 0
       },
-      'model' => response['model'] || 'anthropic/claude-opus-5'
+      'model' => response['model'] || 'anthropic/claude-opus-5-5'
     }.merge(PromptVersion.stamp)
 
     JSON.pretty_generate(openai_compatible)
