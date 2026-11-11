@@ -18,8 +18,10 @@ jobs:
     steps:
       - id: post_ids
         run: |
-          echo "post_ids=$(curl "https://www.metaculus.com/api/posts/?forecast_type=binary,discrete,multiple_choice,numeric&include_description=true&not_forecaster_id=$METACULUS_BOT_ID&offset=0&statuses=open&tournaments=minibench&tournaments=summer-futureeval-2026&tournaments=fall-futureeval-2026" -H "Authorization: Token $METACULUS_BOT_API_TOKEN" \
-            | jq -c '.results | map(.id)')" >> $GITHUB_OUTPUT
+          echo "post_ids=$(curl "https://www.metaculus.com/api/posts/?forecast_type=binary,discrete,multiple_choice,numeric&include_description=true&not_forecaster_id=$METACULUS_BOT_ID&limit=100&offset=0&order_by=scheduled_close_time&statuses=open&tournaments=minibench&tournaments=summer-futureeval-2026&tournaments=fall-futureeval-2026" -H "Authorization: Token $METACULUS_BOT_API_TOKEN" \
+            | jq -c '.results
+                | map(select(.scheduled_close_time == null or ((.scheduled_close_time | sub("\\.[0-9]+"; "") | fromdateiso8601) - now) > 900))
+                | map(.id)')" >> $GITHUB_OUTPUT
         env:
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
           METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
