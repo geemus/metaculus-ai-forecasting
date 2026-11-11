@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'set'
 require_relative 'lib/asknews'
 require_relative 'lib/script_helpers'
 
@@ -61,7 +60,7 @@ filters_json = cache(post_id, 'news_filters.json') do
     system: '',
     tools: []
   )
-  filters = llm.eval({ 'role': 'user', 'content': filter_prompt })
+  filters = llm.eval({ role: 'user', content: filter_prompt })
   puts filters.content
   categories = filters.extracted_content('categories').split(', ')
   categories.select! { |category| CATEGORIES.include?(category) } # ignore category hallucinations
@@ -178,9 +177,7 @@ news_summary = cache(post_id, 'outputs/news_summary.md') do
   # Log search metadata for debugging (not included in cached output)
   query = filters['query']
   cats = (filters['categories'] || []).join(', ')
-  if (query && !query.empty?) || (cats && !cats.empty?)
-    Formatador.display "[blue]Search query: \"#{query}\" | Categories: #{cats}[/]\n"
-  end
+  Formatador.display "[blue]Search query: \"#{query}\" | Categories: #{cats}[/]\n" if (query && !query.empty?) || (cats && !cats.empty?)
 
   summary_text
 end

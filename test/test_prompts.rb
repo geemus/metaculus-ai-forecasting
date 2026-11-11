@@ -5,14 +5,14 @@ require_relative 'test_helper'
 class TestPrompts < Minitest::Test
   def build_question(type:, scaling: {}, options: nil, units: nil)
     Metaculus::Question.new(data: {
-      'created_at' => '2025-01-01T00:00:00Z',
-      'question' => {
-        'type' => type,
-        'scaling' => scaling,
-        'options' => options,
-        'unit' => units
-      }
-    })
+                              'created_at' => '2025-01-01T00:00:00Z',
+                              'question' => {
+                                'type' => type,
+                                'scaling' => scaling,
+                                'options' => options,
+                                'unit' => units
+                              }
+                            })
   end
 
   # ─── feasibility_check_prompt: bound enumeration ────────────────────────────

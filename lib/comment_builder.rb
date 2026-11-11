@@ -2,6 +2,8 @@
 
 require_relative 'asknews'
 
+# Builds the structured pipeline comment posted to Metaculus with each forecast
+# (research summary, per-forecaster positions, consensus analysis, prompt versions).
 module CommentBuilder
   MAX_COMMENT_LENGTH = 10_000
 
@@ -111,17 +113,13 @@ module CommentBuilder
   def build_research_summary(post_id)
     research_path = cache_path(post_id, 'research.json')
 
-    unless File.exist?(research_path)
-      return "## Research Summary\n<research_summary>\n_No research data available._\n</research_summary>"
-    end
+    return "## Research Summary\n<research_summary>\n_No research data available._\n</research_summary>" unless File.exist?(research_path)
 
     research_json = File.read(research_path)
     research = Response.new(:open_router, json: research_json)
     summary = research.extracted_content('research_summary')
 
-    if summary && !summary.empty?
-      return "## Research Summary\n<research_summary>\n#{summary}\n</research_summary>"
-    end
+    return "## Research Summary\n<research_summary>\n#{summary}\n</research_summary>" if summary && !summary.empty?
 
     # Fallback: extract ### 1-4 sections into bullet points
     fallback = fallback_research_summary(research.content)
@@ -174,7 +172,7 @@ module CommentBuilder
       %(<forecaster provider="#{xml_escape(provider)}" value="#{xml_escape(value)}" pre_revision="#{xml_escape(pre_revision)}" confidence="#{xml_escape(confidence)}">\n#{xml_escape(argument)}\n</forecaster>)
     end
 
-    ["## Forecaster Positions", *elements].join("\n")
+    ['## Forecaster Positions', *elements].join("\n")
   end
 
   def load_original_forecasts(post_id)
@@ -195,17 +193,16 @@ module CommentBuilder
     # Fallback to first sentence of think if forecast_summary is missing
     if argument.nil? || argument.empty?
       think = forecast.extracted_content('think')
-      argument = if think && !think.empty?
-                   first_sentence = think.split(/(?<=[.!?])\s+/).first
-                   first_sentence.to_s.strip[0..150]
-                 else
-                   # Last resort: first sentence of non-tag content
-                   stripped = forecast.stripped_content('think', 'forecast_summary', 'confidence',
-                                                        'probability', 'percentiles', 'probabilities',
-                                                        'calibration_disclaimer')
-                   first_sentence = stripped.split(/(?<=[.!?])\s+/).first
-                   first_sentence.to_s.strip[0..150]
-                 end
+      if think && !think.empty?
+        first_sentence = think.split(/(?<=[.!?])\s+/).first
+      else
+        # Last resort: first sentence of non-tag content
+        stripped = forecast.stripped_content('think', 'forecast_summary', 'confidence',
+                                             'probability', 'percentiles', 'probabilities',
+                                             'calibration_disclaimer')
+        first_sentence = stripped.split(/(?<=[.!?])\s+/).first
+      end
+      argument = first_sentence.to_s.strip[0..150]
     end
 
     argument = argument.to_s.strip[0..150]
@@ -324,7 +321,7 @@ module CommentBuilder
 
       comment = comment.sub(%r{<#{tag}>[\s\S]*?</#{tag}>}) do |match|
         inner = match.gsub(%r{</?#{tag}>}, '').strip
-        truncated = inner[0..500] + "...\n_(truncated for length)_"
+        truncated = "#{inner[0..500]}...\n_(truncated for length)_"
         "<#{tag}>\n#{truncated}\n</#{tag}>"
       end
     end
@@ -336,7 +333,7 @@ module CommentBuilder
           opening = Regexp.last_match(1)
           content = Regexp.last_match(2).strip
           closing = Regexp.last_match(3)
-          truncated = content.length > 200 ? content[0..200] + '...' : content
+          truncated = content.length > 200 ? "#{content[0..200]}..." : content
           "#{opening}#{truncated}\n#{closing}"
         end
       end
@@ -344,8 +341,8 @@ module CommentBuilder
 
     # Hard truncate at a safe boundary if still too long
     if comment.length > MAX_COMMENT_LENGTH
-      safe_end = comment.rindex("\n", MAX_COMMENT_LENGTH - 50) || MAX_COMMENT_LENGTH - 50
-      comment = comment[0...safe_end] + "\n\n...\n_(comment truncated to fit length limit)_"
+      safe_end = comment.rindex("\n", MAX_COMMENT_LENGTH - 50) || (MAX_COMMENT_LENGTH - 50)
+      comment = "#{comment[0...safe_end]}\n\n...\n_(comment truncated to fit length limit)_"
     end
 
     comment

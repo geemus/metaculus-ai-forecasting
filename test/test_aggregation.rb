@@ -34,7 +34,7 @@ class TestAggregation < Minitest::Test
     low_probs = probs.map { |p| 1.0 - p }
     base_low = Aggregation.pool_binary(low_probs, a: 1.0)
     extreme_low = Aggregation.pool_binary(low_probs, a: 2.0)
-    assert extreme_low < base_low, "expected a=2 to push below a=1 for <0.5 pool"
+    assert extreme_low < base_low, 'expected a=2 to push below a=1 for <0.5 pool'
   end
 
   def test_pool_binary_clamps_zero_and_one
@@ -140,7 +140,7 @@ class TestAggregation < Minitest::Test
   end
 
   def test_extremization_factor_reads_env
-    original = ENV['EXTREMIZATION_FACTOR']
+    original = ENV.fetch('EXTREMIZATION_FACTOR', nil)
     ENV['EXTREMIZATION_FACTOR'] = '2.5'
     assert_in_delta 2.5, Aggregation.extremization_factor, 1e-12
   ensure

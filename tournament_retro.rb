@@ -11,7 +11,7 @@ questions = Metaculus.list_resolved_tournament_questions(tournament_id)
 # questions score nothing, and skipped scheduled runs otherwise go unnoticed.
 coverage = Coverage.compute(
   Metaculus.list_closed_tournament_posts(tournament_id),
-  Metaculus.list_closed_tournament_posts(tournament_id, forecaster_id: ENV['METACULUS_BOT_ID']).map { |p| p['id'] }
+  Metaculus.list_closed_tournament_posts(tournament_id, forecaster_id: ENV.fetch('METACULUS_BOT_ID', nil)).map { |p| p['id'] }
 )
 Formatador.display_line(Coverage.report(coverage, tournament_id))
 
@@ -148,7 +148,7 @@ retro_prompt = <<~RETRO_PROMPT
   4. **This retro prompt**: at most one change, under the same rules — quote the text it replaces, and prefer a removal or rewording to an addition.
 RETRO_PROMPT
 
-retro = llm.eval({ 'role': 'user', 'content': retro_prompt })
+retro = llm.eval({ role: 'user', content: retro_prompt })
 puts retro.content
 
 # Repeat at the end so it is the last thing on screen.

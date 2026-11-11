@@ -6,14 +6,12 @@ require_relative 'lib/script_helpers'
 post_id = ARGV[0] || raise('post id argument is required')
 provider = ARGV[1]&.to_sym || raise('provider name argv[1] is required')
 
-unless Provider::FORECASTERS.include?(provider)
-  raise ArgumentError, "Unknown forecaster: #{provider}. Expected one of: #{Provider::FORECASTERS.join(', ')}"
-end
+raise ArgumentError, "Unknown forecaster: #{provider}. Expected one of: #{Provider::FORECASTERS.join(', ')}" unless Provider::FORECASTERS.include?(provider)
 
 question = fetch_question(post_id)
 exit if should_skip_forecast?(question, post_id)
 
-@research_output = load_research(post_id, strip_tags: "research_summary")
+@research_output = load_research(post_id, strip_tags: 'research_summary')
 @forecasts = load_forecasts(post_id, type: 'forecast')
 @mechanical_baseline = mechanical_baseline(question, @forecasts)
 
@@ -27,9 +25,9 @@ cache(post_id, "forecasts/revision.#{provider}.json") do
   forecast_delphi_prompt = FORECAST_DELPHI_PROMPT_TEMPLATE.result(binding)
   cache_write(post_id, "inputs/revision.#{provider}.md", forecast_delphi_prompt)
   revision = llm.eval(
-    { 'role': 'user', 'content': forecast_prompt },
-    { 'role': 'assistant', 'content': @forecast.content },
-    { 'role': 'user', 'content': forecast_delphi_prompt }
+    { role: 'user', content: forecast_prompt },
+    { role: 'assistant', content: @forecast.content },
+    { role: 'user', content: forecast_delphi_prompt }
   )
   puts revision.content
   cache_write(post_id, "outputs/revision.#{provider}.md", revision.content)

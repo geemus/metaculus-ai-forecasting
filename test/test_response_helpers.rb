@@ -8,7 +8,7 @@ class ResponseHelpersTest < Minitest::Test
   def make_response(content, provider: :openai)
     json = {
       'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],
-      'usage'   => { 'prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15 }
+      'usage' => { 'prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15 }
     }.to_json
     Response.new(provider, json: json)
   end

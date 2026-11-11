@@ -16,12 +16,12 @@ class UtilityTest < Minitest::Test
   end
 
   def test_extract_xml_multiple_matches_same_tag
-    assert_equal ['a', 'b'], extract_xml('<tag>a</tag><tag>b</tag>', 'tag')
+    assert_equal %w[a b], extract_xml('<tag>a</tag><tag>b</tag>', 'tag')
   end
 
   def test_extract_xml_multiple_different_tags
     result = extract_xml('<a>first</a><b>second</b>', 'a', 'b')
-    assert_equal ['first', 'second'], result
+    assert_equal %w[first second], result
   end
 
   def test_extract_xml_missing_tag_returns_empty
@@ -136,9 +136,9 @@ class UtilityTest < Minitest::Test
 
   def test_test_question_true_for_integer_ids
     assert TestQuestions.test_question?(578)
-    assert TestQuestions.test_question?(14333)
-    assert TestQuestions.test_question?(22427)
-    assert TestQuestions.test_question?(38880)
+    assert TestQuestions.test_question?(14_333)
+    assert TestQuestions.test_question?(22_427)
+    assert TestQuestions.test_question?(38_880)
   end
 
   def test_test_question_false_for_unknown_id
@@ -177,7 +177,10 @@ class UtilityTest < Minitest::Test
   def test_cache_hit_returns_cached_without_calling_block
     cache_write(TEST_POST_ID, 'outputs/test.txt', 'cached value')
     block_called = false
-    result = cache(TEST_POST_ID, 'outputs/test.txt') { block_called = true; 'fresh' }
+    result = cache(TEST_POST_ID, 'outputs/test.txt') do
+      block_called = true
+      'fresh'
+    end
     assert_equal 'cached value', result
     refute block_called
   end
@@ -219,7 +222,7 @@ class UtilityTest < Minitest::Test
   end
 
   def test_cache_delete_no_error_when_file_missing
-    cache_delete(TEST_POST_ID, 'outputs/nonexistent.txt')  # should not raise
+    cache_delete(TEST_POST_ID, 'outputs/nonexistent.txt') # should not raise
   end
 
   # ---------------------------------------------------------------------------
@@ -229,7 +232,7 @@ class UtilityTest < Minitest::Test
   MockQuestion   = Struct.new(:type)
   BinaryForecast = Struct.new(:probability)
   NumericForecast = Struct.new(:percentiles)
-  MCForecast     = Struct.new(:probabilities)
+  MCForecast = Struct.new(:probabilities)
 
   def test_forecast_peer_summary_binary_includes_own_and_peer_values
     question  = MockQuestion.new('binary')

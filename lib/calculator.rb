@@ -2,6 +2,7 @@
 
 require 'dentaku'
 
+# Safe arithmetic evaluation via Dentaku; backs the forecasters' calculate tool.
 module Calculator
   class << self
     def evaluate(expression)

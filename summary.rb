@@ -7,7 +7,7 @@ FORECASTERS = Provider::FORECASTERS
 
 post_id = ARGV[0] || raise('post id argv[0] is required')
 
-question = fetch_question(post_id)
+fetch_question(post_id)
 # exit if should_skip_forecast?(question, post_id)
 
 # cache_write(post_id, 'inputs/system.superforecaster.md', SUPERFORECASTER_SYSTEM_PROMPT)
@@ -28,7 +28,7 @@ prompt = <<~PROMPT
   </source>
 PROMPT
 puts prompt
-response = llm.eval({ 'role': 'user', 'content': prompt })
+response = llm.eval({ role: 'user', content: prompt })
 puts '---'
 puts response.content
 exit

@@ -11,7 +11,7 @@ id = ARGV[0] || raise('post id argument is required')
 post_id = if id.to_i.to_s == id
             id
           else
-            IO.popen(['./tournament_questions.rb', id], &:read).split(' ').first
+            IO.popen(['./tournament_questions.rb', id], &:read).split.first
           end
 
 if post_id.nil? || post_id.empty?
@@ -23,7 +23,11 @@ raise("Invalid post_id: #{post_id.inspect}") unless post_id.to_i.to_s == post_id
 
 system('./news.rb', post_id)
 system('./tools_research.rb', post_id)
-post_data = JSON.parse(File.read("tmp/#{post_id}/post.json")) rescue {}
+post_data = begin
+  JSON.parse(File.read("tmp/#{post_id}/post.json"))
+rescue StandardError
+  {}
+end
 puts post_data['title']
 puts post_data.dig('question', 'description')
 Provider::FORECASTERS.each do |provider|

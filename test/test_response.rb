@@ -6,19 +6,19 @@ class ResponseTest < Minitest::Test
   def openai_json(content: 'hello', input: 100, output: 50, total: 150, tool_calls: nil)
     {
       'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => tool_calls } }],
-      'usage'   => { 'prompt_tokens' => input, 'completion_tokens' => output, 'total_tokens' => total }
+      'usage' => { 'prompt_tokens' => input, 'completion_tokens' => output, 'total_tokens' => total }
     }.to_json
   end
 
-  def deepseek_json(content: 'ds', input: 200, output: 100, total: 300,
+  def deepseek_json(content: 'ds', input: 200, output: 100, total: 300, # rubocop:disable Metrics/ParameterLists
                     cache_hit: 50, cache_miss: 150)
     {
       'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],
-      'usage'   => {
-        'prompt_tokens'            => input,
-        'completion_tokens'        => output,
-        'total_tokens'             => total,
-        'prompt_cache_hit_tokens'  => cache_hit,
+      'usage' => {
+        'prompt_tokens' => input,
+        'completion_tokens' => output,
+        'total_tokens' => total,
+        'prompt_cache_hit_tokens' => cache_hit,
         'prompt_cache_miss_tokens' => cache_miss
       }
     }.to_json
@@ -27,11 +27,11 @@ class ResponseTest < Minitest::Test
   def open_router_json(content: 'or', input: 300, output: 100, total: 400, cost: 0.02)
     {
       'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],
-      'usage'   => {
-        'prompt_tokens'     => input,
+      'usage' => {
+        'prompt_tokens' => input,
         'completion_tokens' => output,
-        'total_tokens'      => total,
-        'cost'              => cost
+        'total_tokens' => total,
+        'cost' => cost
       }
     }.to_json
   end

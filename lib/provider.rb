@@ -5,6 +5,8 @@ require 'json'
 require './lib/deepseek'
 require './lib/open_router'
 
+# Maps provider names (:openai, :gemini, :deepseek, :anthropic) to LLM clients
+# and defines the forecaster ensemble.
 module Provider
   # Forecaster ensemble. Single source of truth is forecasters.json, which
   # CI also reads directly (see .github/workflows/forecast.yml).
@@ -33,7 +35,7 @@ module Provider
         args[:model] ||= 'google/gemini-2.5-pro'
       when :openai
         args[:model] ||= 'openai/gpt-5.6-sol'
-        args[:api_key] ||= ENV['OPEN_ROUTER_OPENAI_API_KEY'] || ENV['OPEN_ROUTER_API_KEY']
+        args[:api_key] ||= ENV['OPEN_ROUTER_OPENAI_API_KEY'] || ENV.fetch('OPEN_ROUTER_API_KEY', nil)
       end
 
       klass.new(**args)

@@ -11,4 +11,9 @@ task :coverage do
   sh 'open coverage/index.html 2>/dev/null || xdg-open coverage/index.html'
 end
 
+desc 'Run RuboCop'
+task :lint do
+  sh 'bundle exec rubocop'
+end
+
 task default: :test
