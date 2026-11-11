@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require 'formatador'
 
 Thread.current[:formatador] = Formatador.new
@@ -36,7 +37,7 @@ end
 
 def cache_delete(question_id, path)
   tmp_path = cache_path(question_id, path)
-  File.delete(tmp_path) if File.exist?(tmp_path)
+  FileUtils.rm_f(tmp_path)
 end
 
 def cache_read!(question_id, path)
@@ -90,7 +91,7 @@ def mechanical_baseline(question, forecasts)
   when 'binary'
     pooled = Aggregation.pool_binary(forecasts.map(&:probability))
     a = Aggregation.extremization_factor
-    if a == 1.0
+    if a == 1
       "Log-odds mean: #{(pooled * 100).round(1)}%"
     else
       "Log-odds pool (extremization a=#{a}): #{(pooled * 100).round(1)}%"
@@ -99,7 +100,7 @@ def mechanical_baseline(question, forecasts)
     pooled = Aggregation.pool_multiple_choice(forecasts.map(&:probabilities))
     lines = pooled.map { |k, v| "  #{k}: #{(v * 100).round(1)}%" }
     a = Aggregation.extremization_factor
-    if a == 1.0
+    if a == 1
       "Softmax-of-log mean:\n#{lines.join("\n")}"
     else
       "Softmax-of-log pool (extremization a=#{a}):\n#{lines.join("\n")}"

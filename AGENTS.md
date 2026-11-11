@@ -11,6 +11,12 @@ The `gh` CLI is available and authenticated — use it for issues, PRs, and othe
 # Install dependencies
 bundle install
 
+# Run tests
+bundle exec rake test
+
+# Lint (CI runs this; -a applies safe autocorrections)
+bundle exec rubocop -a
+
 # Run a single forecast (post_id, provider name)
 ruby forecast.rb <post_id> <provider>
 

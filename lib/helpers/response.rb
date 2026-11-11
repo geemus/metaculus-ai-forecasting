@@ -16,6 +16,7 @@ module ResponseHelpers
       extracted_content('percentiles').split("\n").each do |line|
         line = line.strip
         next if line.empty?
+
         key, value = line.split(': ', 2)
         key = key.split('Percentile ', 2).last
         value = value.split(' ', 2).first
@@ -50,6 +51,7 @@ module ResponseHelpers
       extracted_content('probabilities').split("\n").each do |line|
         line = line.strip
         next if line.empty?
+
         key, value = line.rpartition(': ').values_at(0, 2)
         probabilities[key.strip] = parse_probability(value)
       end
@@ -96,7 +98,7 @@ module ResponseHelpers
     self
   end
 
-  def to_json(*args)
-    data.to_json(*args)
+  def to_json(*)
+    data.to_json(*)
   end
 end

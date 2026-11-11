@@ -75,8 +75,8 @@ class AskNews
       'https://api.asknews.app',
       expects: 200,
       headers: {
-        'accept': 'application/json',
-        'authorization': "Bearer #{ENV['ASKNEWS_API_KEY']}",
+        accept: 'application/json',
+        authorization: "Bearer #{ENV.fetch('ASKNEWS_API_KEY', nil)}",
         'content-type': 'application/json'
       },
       idempotent: true,
@@ -92,8 +92,8 @@ class AskNews
       }
     )
     data = JSON.parse(excon_response.body)
-    puts(data['filter_params'].select { |k, _| %w[categories query].include?(k) })
-    data['filter_params'].select { |k, _| %w[categories query].include?(k) }
+    puts(data['filter_params'].slice('categories', 'query'))
+    data['filter_params'].slice('categories', 'query')
   rescue Excon::Error => e
     puts e.response.inspect
     exit(1)

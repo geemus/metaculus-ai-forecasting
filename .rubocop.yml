@@ -1,0 +1,37 @@
+AllCops:
+  TargetRubyVersion: 4.0
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'tmp/**/*'
+    - 'coverage/**/*'
+    - 'vendor/**/*'
+
+# Prompt-building methods and pipeline scripts are long by nature; splitting
+# them to satisfy size/complexity limits adds churn without improving clarity.
+Metrics:
+  Enabled: false
+
+# Prompts and their helpers are prose-heavy; wrapping them for line length
+# hurts readability. (Edits to lib/prompts.rb also change the prompt-version
+# hash, so purely cosmetic rewrites there should be avoided.)
+Layout/LineLength:
+  Enabled: false
+
+# Small, script-style codebase; class-level doc comments add noise.
+Style/Documentation:
+  Enabled: false
+
+# Test names like `test_cdf_stays_within_0_1` read better than the alternatives.
+Naming/VariableNumber:
+  Enabled: false
+
+# `resp&.headers&.dig(...)&.to_i` chains are clearer than nested guards for
+# optional API response fields.
+Style/SafeNavigationChainLength:
+  Enabled: false
+
+# RuboCop defaults plus conventional single-letter names in math helpers
+# (logit(p), sigmoid(x), ...).
+Naming/MethodParameterName:
+  AllowedNames: [a, as, at, by, cc, db, id, if, in, io, ip, of, on, os, p, pp, q, to, x]

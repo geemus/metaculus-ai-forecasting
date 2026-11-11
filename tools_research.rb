@@ -33,8 +33,8 @@ cache(post_id, 'research.json') do
     # status, so the work completes server-side independent of the HTTP
     # connection.
     headers = {
-      'accept': 'application/json',
-      'authorization': "Bearer #{ENV['PERPLEXITY_API_KEY']}",
+      accept: 'application/json',
+      authorization: "Bearer #{ENV.fetch('PERPLEXITY_API_KEY', nil)}",
       'content-type': 'application/json'
     }
 
@@ -48,7 +48,7 @@ cache(post_id, 'research.json') do
     # Cap how many URLs the fetch_url tool retrieves per invocation to
     # bound latency and keep fetched content from crowding the reasoning
     # context window. Perplexity accepts 1–10; overridable via env.
-    max_urls = [[Integer(ENV['PERPLEXITY_MAX_URLS'] || 4), 1].max, 10].min
+    max_urls = Integer(ENV['PERPLEXITY_MAX_URLS'] || 4).clamp(1, 10)
 
     agent_tools = [
       { type: 'web_search' },
@@ -59,10 +59,10 @@ cache(post_id, 'research.json') do
     submission = JSON.parse(
       agent.post(path: '/v1/agent', body: {
         model: 'anthropic/claude-opus-5-5',
-        max_output_tokens: 64000,
+        max_output_tokens: 64_000,
         max_steps: 15,
         prompt_cache_key: 'high',
-        reasoning: { 'effort': 'high' },
+        reasoning: { effort: 'high' },
         tool_choice: 'auto',
         input: [{ type: 'message', role: 'user', content: @research_prompt }],
         instructions: RESEARCHER_SYSTEM_PROMPT,
@@ -72,7 +72,7 @@ cache(post_id, 'research.json') do
     )
 
     run_id = submission['id'] ||
-      raise("Perplexity background submission missing id: #{submission.inspect}")
+             raise("Perplexity background submission missing id: #{submission.inspect}")
     Formatador.display_line "\n# Researcher: background run #{run_id} (#{submission['status']})"
 
     # Poll the background run to completion. Each poll is a cheap HTTP GET,
@@ -81,9 +81,7 @@ cache(post_id, 'research.json') do
     poll_deadline = Time.now + Integer(ENV['PERPLEXITY_AGENT_TIMEOUT'] || 1800)
     poll_interval = Float(ENV['PERPLEXITY_POLL_INTERVAL'] || 15)
     response = loop do
-      if Time.now >= poll_deadline
-        raise "Timed out after #{(Time.now - start_time).round}s waiting for Perplexity agent run #{run_id}"
-      end
+      raise "Timed out after #{(Time.now - start_time).round}s waiting for Perplexity agent run #{run_id}" if Time.now >= poll_deadline
 
       begin
         response = JSON.parse(agent.get(path: "/v1/agent/#{run_id}").body)
@@ -100,24 +98,22 @@ cache(post_id, 'research.json') do
     end
 
     status = response['status']
-    unless status == 'completed'
-      raise "Perplexity agent run #{run_id} ended with status #{status}: #{response['error'].inspect}"
-    end
+    raise "Perplexity agent run #{run_id} ended with status #{status}: #{response['error'].inspect}" unless status == 'completed'
 
     summary = response['output'].map { |item| item['type'] }.tally
-      .map { |type, count| "#{type}×#{count}" }.sort.join(', ')
+                                .map { |type, count| "#{type}×#{count}" }.sort.join(', ')
     Formatador.display_line "\n# Researcher: #{summary}"
 
     # Extract text content from the Agent API response.
     # Content may be a plain string or an array of {type, text} blocks,
     # depending on whether web search results were included.
     text = response['output']
-      .select { |item| item['role'] == 'assistant' }
-      .map { |item| item['content'] }
-      .flatten
-      .map { |c| c.is_a?(Hash) ? c['text'] : c }
-      .compact
-      .join("\n")
+           .select { |item| item['role'] == 'assistant' }
+           .map { |item| item['content'] }
+           .flatten
+           .map { |c| c.is_a?(Hash) ? c['text'] : c }
+           .compact
+           .join("\n")
 
     # Stamp the brief with its retrieval time before it is cached. The
     # cached research is reused by later runs, so this is the only record
@@ -129,7 +125,7 @@ cache(post_id, 'research.json') do
     duration = Time.now - start_time
     Formatador.display_line(
       format(
-        "[light_green][perplexity_agent](%<total>d tokens in %<minutes>dm %<seconds>ds)[/]",
+        '[light_green][perplexity_agent](%<total>d tokens in %<minutes>dm %<seconds>ds)[/]',
         {
           total: response.dig('usage', 'total_tokens') || 0,
           minutes: (duration / 60).to_i,

@@ -27,8 +27,8 @@ class DeepSeek
         model: model,
         messages: [
           {
-            'role': 'system',
-            'content': system
+            role: 'system',
+            content: system
           }
         ].concat(messages),
         temperature: temperature,
@@ -77,8 +77,8 @@ class DeepSeek
       'https://api.deepseek.com/chat/completions',
       expects: 200,
       headers: {
-        'accept': 'application/json',
-        'authorization': "Bearer #{ENV['DEEPSEEK_API_KEY']}",
+        accept: 'application/json',
+        authorization: "Bearer #{ENV.fetch('DEEPSEEK_API_KEY', nil)}",
         'content-type': 'application/json'
       },
       idempotent: true,

@@ -36,7 +36,8 @@ module Coverage
     posts = all_posts.map do |post|
       close = post['scheduled_close_time'] || post.dig('question', 'scheduled_close_time')
       { id: post['id'], close_time: close && Time.parse(close) }
-    end.uniq { |p| p[:id] }
+    end
+    posts = posts.uniq { |p| p[:id] }
     missed = posts.reject { |p| covered.include?(p[:id]) }
     Result.new(total: posts.length, covered: posts.length - missed.length, missed: missed)
   end
@@ -45,9 +46,7 @@ module Coverage
     color = result.low? ? 'red' : 'green'
     lines = ["\n[bold][#{color}]# Coverage(#{tournament_id}): " \
              "#{result.covered}/#{result.total} closed questions forecast (#{result.percent}%)[/]"]
-    if result.low?
-      lines << "[red]Below #{(WARN_BELOW * 100).round}% — check that scheduled runs are firing.[/]"
-    end
+    lines << "[red]Below #{(WARN_BELOW * 100).round}% — check that scheduled runs are firing.[/]" if result.low?
     result.missed_by_day.each do |day, ids|
       lines << "  missed #{day}: #{ids.length} — #{ids.join(', ')}"
     end

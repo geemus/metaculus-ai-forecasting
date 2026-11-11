@@ -16,3 +16,7 @@ group :test do
   gem 'rake'
   gem 'simplecov', require: false
 end
+
+group :development do
+  gem 'rubocop', require: false
+end

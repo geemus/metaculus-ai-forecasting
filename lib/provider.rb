@@ -33,7 +33,7 @@ module Provider
         args[:model] ||= 'google/gemini-2.5-pro'
       when :openai
         args[:model] ||= 'openai/gpt-5.6-sol'
-        args[:api_key] ||= ENV['OPEN_ROUTER_OPENAI_API_KEY'] || ENV['OPEN_ROUTER_API_KEY']
+        args[:api_key] ||= ENV['OPEN_ROUTER_OPENAI_API_KEY'] || ENV.fetch('OPEN_ROUTER_API_KEY', nil)
       end
 
       klass.new(**args)

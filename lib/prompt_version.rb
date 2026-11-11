@@ -13,7 +13,7 @@ module PromptVersion
   module_function
 
   def files(root: ROOT)
-    [File.join(root, 'lib/prompts.rb'), *Dir[File.join(root, 'lib/prompt_templates/*.erb')].sort]
+    [File.join(root, 'lib/prompts.rb'), *Dir[File.join(root, 'lib/prompt_templates/*.erb')]]
   end
 
   def compute(root: ROOT)

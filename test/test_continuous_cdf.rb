@@ -9,18 +9,18 @@ class TestContinuousCdf < Minitest::Test
   def build_question(range_min:, range_max:, open_lower: false, open_upper: false, size: 201)
     rmin = range_min.to_f
     rmax = range_max.to_f
-    continuous_range = Array.new(size) { |i| rmin + i * (rmax - rmin) / (size - 1) }
+    continuous_range = Array.new(size) { |i| rmin + (i * (rmax - rmin) / (size - 1)) }
     Metaculus::Question.new(data: {
-      'question' => {
-        'scaling' => {
-          'range_min' => rmin,
-          'range_max' => rmax,
-          'open_lower_bound' => open_lower,
-          'open_upper_bound' => open_upper,
-          'continuous_range' => continuous_range
-        }
-      }
-    })
+                              'question' => {
+                                'scaling' => {
+                                  'range_min' => rmin,
+                                  'range_max' => rmax,
+                                  'open_lower_bound' => open_lower,
+                                  'open_upper_bound' => open_upper,
+                                  'continuous_range' => continuous_range
+                                }
+                              }
+                            })
   end
 
   # Wide percentiles spread across most of the 0-10000 range (all Float values).
@@ -64,8 +64,8 @@ class TestContinuousCdf < Minitest::Test
   def test_wide_distribution_cdf_stays_within_0_1
     q = build_question(range_min: 0, range_max: 10_000)
     cdf = q.continuous_cdf(wide_percentiles)
-    assert cdf.min >= 0.0, "CDF has values below 0"
-    assert cdf.max <= 1.0, "CDF has values above 1"
+    assert cdf.min >= 0.0, 'CDF has values below 0'
+    assert cdf.max <= 1.0, 'CDF has values above 1'
   end
 
   # ─── PMF cap: wide (well-spread) distributions ──────────────────────────────
@@ -100,8 +100,8 @@ class TestContinuousCdf < Minitest::Test
   def test_spiky_distribution_cdf_stays_within_0_1_after_capping
     q = build_question(range_min: 0, range_max: 10_000)
     cdf = q.continuous_cdf(spiky_percentiles)
-    assert cdf.min >= 0.0, "Capped CDF has values below 0"
-    assert cdf.max <= 1.0, "Capped CDF has values above 1"
+    assert cdf.min >= 0.0, 'Capped CDF has values below 0'
+    assert cdf.max <= 1.0, 'Capped CDF has values above 1'
   end
 
   def test_capping_preserves_first_and_last_cdf_values
@@ -111,9 +111,9 @@ class TestContinuousCdf < Minitest::Test
     # First and last values come from the standardization formula, not the PMF capping,
     # so they should be the same regardless of whether capping fired.
     assert_in_delta cdf_wide.first, cdf_spiky.first, 1e-6,
-                    "First CDF value changed after capping"
+                    'First CDF value changed after capping'
     assert_in_delta cdf_wide.last, cdf_spiky.last, 1e-6,
-                    "Last CDF value changed after capping"
+                    'Last CDF value changed after capping'
   end
 
   # ─── Open-bound variants ─────────────────────────────────────────────────────

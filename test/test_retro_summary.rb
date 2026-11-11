@@ -19,7 +19,7 @@ class TestRetroSummary < Minitest::Test
 
   # Linear CDF from range_min..range_max: uniform mass over a non-zero lower bound.
   def uniform_numeric(resolution:, rmin: 60_000.0, rmax: 160_000.0)
-    xs = Array.new(201) { |i| rmin + i * (rmax - rmin) / 200 }
+    xs = Array.new(201) { |i| rmin + (i * (rmax - rmin) / 200) }
     cdf = Array.new(201) { |i| i / 200.0 }
     build(type: 'numeric', resolution: resolution, values: cdf, unit: 'USD',
           scaling: { 'range_min' => rmin, 'range_max' => rmax, 'continuous_range' => xs })

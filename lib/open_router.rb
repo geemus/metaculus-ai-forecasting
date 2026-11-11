@@ -7,8 +7,7 @@ class OpenRouter
   attr_accessor :model, :reasoning, :system, :temperature, :tools
 
   def initialize(
-    api_key: ENV['OPEN_ROUTER_API_KEY'],
-    model:,
+    model:, api_key: ENV.fetch('OPEN_ROUTER_API_KEY', nil),
     reasoning: { effort: 'medium' },
     system: SUPERFORECASTER_SYSTEM_PROMPT,
     temperature: 0.1,
@@ -31,8 +30,8 @@ class OpenRouter
         model: model,
         messages: [
           {
-            'role': 'system',
-            'content': system
+            role: 'system',
+            content: system
           }
         ].concat(messages),
         reasoning: reasoning,
@@ -83,8 +82,8 @@ class OpenRouter
       'https://openrouter.ai/api/v1/chat/completions',
       expects: 200,
       headers: {
-        'accept': 'application/json',
-        'authorization': "Bearer #{@api_key}",
+        accept: 'application/json',
+        authorization: "Bearer #{@api_key}",
         'content-type': 'application/json'
       },
       idempotent: true,
