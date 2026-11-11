@@ -26,13 +26,13 @@ system('./tools_research.rb', post_id)
 post_data = JSON.parse(File.read("tmp/#{post_id}/post.json")) rescue {}
 puts post_data['title']
 puts post_data.dig('question', 'description')
-Provider::FORECASTERS.count.times do |forecaster_index|
-  fork { system('./forecast.rb', post_id, forecaster_index.to_s) }
+Provider::FORECASTERS.each do |provider|
+  fork { system('./forecast.rb', post_id, provider.to_s) }
 end
 Process.waitall
 system('./forecast_stats.rb', post_id, 'forecast')
-Provider::FORECASTERS.count.times do |forecaster_index|
-  fork { system('./revise_forecast.rb', post_id, forecaster_index.to_s) }
+Provider::FORECASTERS.each do |provider|
+  fork { system('./revise_forecast.rb', post_id, provider.to_s) }
 end
 Process.waitall
 system('./forecast_stats.rb', post_id, 'revision')

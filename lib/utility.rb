@@ -85,6 +85,37 @@ def sorted_median(sorted_values)
   ((sorted_values[mid.floor] + sorted_values[mid.ceil]) / 2.0).round(3)
 end
 
+def mechanical_baseline(question, forecasts)
+  case question.type
+  when 'binary'
+    pooled = Aggregation.pool_binary(forecasts.map(&:probability))
+    a = Aggregation.extremization_factor
+    if a == 1.0
+      "Log-odds mean: #{(pooled * 100).round(1)}%"
+    else
+      "Log-odds pool (extremization a=#{a}): #{(pooled * 100).round(1)}%"
+    end
+  when 'multiple_choice'
+    pooled = Aggregation.pool_multiple_choice(forecasts.map(&:probabilities))
+    lines = pooled.map { |k, v| "  #{k}: #{(v * 100).round(1)}%" }
+    a = Aggregation.extremization_factor
+    if a == 1.0
+      "Softmax-of-log mean:\n#{lines.join("\n")}"
+    else
+      "Softmax-of-log pool (extremization a=#{a}):\n#{lines.join("\n")}"
+    end
+  when 'numeric', 'discrete'
+    keys = forecasts.first.percentiles.keys.sort
+    arrays = forecasts.map { |f| keys.map { |k| f.percentiles[k] } }
+    pooled = Aggregation.pool_numeric(arrays)
+    lines = keys.zip(pooled).map { |k, v| "  Percentile #{k.to_s.rjust(2)}: #{v.round(3)}" }
+    "Quantile average:\n#{lines.join("\n")}"
+  end
+rescue StandardError => e
+  warn "WARNING: failed to build mechanical baseline: #{e.message}"
+  nil
+end
+
 def forecast_peer_summary(question, forecasts, own_forecast)
   peers = forecasts.reject { |f| f == own_forecast }
   case question.type
@@ -155,8 +186,11 @@ def load_cached_deepnews(post_id)
 end
 
 # Load cached news
+# Missing news.md means the news stage was skipped (e.g. AskNews unavailable);
+# research proceeds without news rather than failing.
 def load_cached_news(post_id)
-  cache_read!(post_id, 'outputs/news.md')
+  path = cache_path(post_id, 'outputs/news.md')
+  File.exist?(path) ? File.read(path) : ''
 end
 
 # Convenience method: load from cache only
@@ -171,17 +205,24 @@ end
 
 # Load all forecasts of a given type for all forecasters
 def load_forecasts(post_id, type: 'forecast', forecasters: Provider::FORECASTERS)
-  forecasters.each_with_index.map do |provider, index|
-    forecast_json = cache_read!(post_id, "forecasts/#{type}.#{index}.json")
+  forecasters.map do |provider|
+    forecast_json = cache_read!(post_id, "forecasts/#{type}.#{provider}.json")
     Response.new(provider, json: forecast_json)
   end
 end
 
 # Load a single forecast for a specific forecaster
-def load_forecast(post_id, forecaster_index, type: 'forecast', forecasters: Provider::FORECASTERS)
-  provider = forecasters[forecaster_index]
-  forecast_json = cache_read!(post_id, "forecasts/#{type}.#{forecaster_index}.json")
+def load_forecast(post_id, provider, type: 'forecast')
+  forecast_json = cache_read!(post_id, "forecasts/#{type}.#{provider}.json")
   Response.new(provider, json: forecast_json)
+end
+
+# Stamp the research brief with its retrieval time. research.json is cached
+# per post and reused by every later run, so without this stamp a brief
+# generated weeks ago is indistinguishable from one generated minutes ago.
+def with_research_meta(text, at: Time.now)
+  stamp = at.utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+  "<research_meta>\nresearched_at: #{stamp}\n</research_meta>\n\n#{text}"
 end
 
 # Load research and optionally extract stripped content
@@ -193,6 +234,6 @@ def load_research(post_id, strip_tags: nil)
     tags = strip_tags.is_a?(Array) ? strip_tags : [strip_tags]
     research.stripped_content(*tags)
   else
-    research
+    research.content
   end
 end

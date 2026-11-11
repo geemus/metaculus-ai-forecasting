@@ -1,22 +1,20 @@
 # frozen_string_literal: true
 
+require 'json'
+
 require './lib/deepseek'
 require './lib/open_router'
-require './lib/perplexity'
 
 module Provider
-  # Forecasters list
-  FORECASTERS = %i[
-    anthropic
-    openai
-    perplexity
-    deepseek
-  ].freeze
+  # Forecaster ensemble. Single source of truth is forecasters.json, which
+  # CI also reads directly (see .github/workflows/forecast.yml).
+  FORECASTERS_PATH = File.expand_path('../forecasters.json', __dir__)
+  FORECASTERS = JSON.parse(File.read(FORECASTERS_PATH)).map(&:to_sym).freeze
 
   # Map provider symbols to their class names
   PROVIDER_CLASSES = {
     anthropic: OpenRouter,
-    perplexity: Perplexity,
+    gemini: OpenRouter,
     deepseek: DeepSeek,
     openai: OpenRouter
   }.freeze
@@ -30,9 +28,12 @@ module Provider
 
       case provider_symbol
       when :anthropic
-        args[:model] ||= 'anthropic/claude-opus-4.6'
+        args[:model] ||= 'anthropic/claude-opus-5'
+      when :gemini
+        args[:model] ||= 'google/gemini-2.5-pro'
       when :openai
-        args[:model] ||= 'openai/gpt-5.4'
+        args[:model] ||= 'openai/gpt-5.6-sol'
+        args[:api_key] ||= ENV['OPEN_ROUTER_OPENAI_API_KEY'] || ENV['OPEN_ROUTER_API_KEY']
       end
 
       klass.new(**args)

@@ -3,7 +3,9 @@ name: Tournaments
 on:
   workflow_dispatch:
   schedule:
-    - cron: "5/20 * * * *" # run every 30 minutes, starting at 5 past the hour
+    - cron: "13 * * * *" # every hour at 13 minutes past the hour
+    - cron: "33 * * * *" # every hour at 33 minutes past the hour
+    - cron: "53 * * * *" # every hour at 53 minutes past the hour
 
 jobs:
   query:
@@ -16,8 +18,10 @@ jobs:
     steps:
       - id: post_ids
         run: |
-          echo "post_ids=$(curl "https://www.metaculus.com/api/posts/?forecast_type=binary,discrete,multiple_choice,numeric&include_description=true&not_forecaster_id=$METACULUS_BOT_ID&offset=0&statuses=open&tournaments=fall-aib-2025&tournaments=minibench&tournaments=spring-aib-2026" -H "Authorization: Token $METACULUS_BOT_API_TOKEN" \
-            | jq -c '.results | map(.id)')" >> $GITHUB_OUTPUT
+          echo "post_ids=$(curl "https://www.metaculus.com/api/posts/?forecast_type=binary,discrete,multiple_choice,numeric&include_description=true&not_forecaster_id=$METACULUS_BOT_ID&limit=100&offset=0&order_by=scheduled_close_time&statuses=open&tournaments=minibench&tournaments=summer-futureeval-2026&tournaments=fall-futureeval-2026" -H "Authorization: Token $METACULUS_BOT_API_TOKEN" \
+            | jq -c '.results
+                | map(select(.scheduled_close_time == null or ((.scheduled_close_time | sub("\\.[0-9]+"; "") | fromdateiso8601) - now) > 900))
+                | map(.id)')" >> $GITHUB_OUTPUT
         env:
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
           METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
@@ -39,6 +43,7 @@ jobs:
       METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
       METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
       OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
+      OPEN_ROUTER_OPENAI_API_KEY: ${{ secrets.OPEN_ROUTER_OPENAI_API_KEY }}
       PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
     uses: ./.github/workflows/forecast.yml
     with:

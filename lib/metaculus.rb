@@ -12,7 +12,7 @@ class Metaculus
 
   def get_post(id)
     start_time = Time.now
-    excon_response = connection.get(path: "/api/posts/#{id}/")
+    excon_response = with_retry { connection.get(path: "/api/posts/#{id}/") }
     duration = Time.now - start_time
     Formatador.display_line(
       format(
@@ -31,21 +31,86 @@ class Metaculus
   end
 
   def list_tournament_questions(tournament_id)
-    excon_response = connection.get(
-      path: '/api/posts/',
-      query: {
-        forecast_type: %w[binary discrete multiple_choice numeric].join(','),
-        not_forecaster_id: ENV['METACULUS_BOT_ID'],
-        include_description: true,
-        offset: 0,
-        statuses: 'open',
-        tournaments: [tournament_id]
-      }
-    )
+    excon_response = with_retry do
+      connection.get(
+        path: '/api/posts/',
+        query: {
+          forecast_type: %w[binary discrete multiple_choice numeric].join(','),
+          not_forecaster_id: ENV['METACULUS_BOT_ID'],
+          include_description: true,
+          offset: 0,
+          statuses: 'open',
+          tournaments: [tournament_id]
+        }
+      )
+    end
     data = JSON.parse(excon_response.body)
     questions = data['results'].map { |datum| Question.new(data: datum) }
     questions.reject! { |question| question.data['status'] == 'closed' }
     questions
+  rescue Excon::Error => e
+    puts e.response.inspect
+    exit(1)
+  end
+
+  def self.get_comments(post_id)
+    new.get_comments(post_id)
+  end
+
+  # The bot's own comments on a post (including private ones, which the bot's
+  # token can read). Returns the `results` array, or [] on failure.
+  def get_comments(post_id)
+    excon_response = with_retry do
+      connection.get(
+        path: '/api/comments/',
+        query: {
+          post: post_id,
+          author: ENV['METACULUS_BOT_ID'],
+          limit: 20
+        }
+      )
+    end
+    JSON.parse(excon_response.body)['results'] || []
+  rescue Excon::Error => e
+    puts e.response.inspect
+    []
+  end
+
+  # Text of the most recent, non-deleted top-level comment — the pipeline
+  # posts one per forecast run, so the newest matches the latest forecast.
+  def self.latest_comment_text(comments)
+    comment = comments
+              .reject { |c| c['is_soft_deleted'] || c['parent_id'] || c['text'].to_s.empty? }
+              .max_by { |c| c['created_at'].to_s }
+    comment && comment['text']
+  end
+
+  def self.list_closed_tournament_posts(tournament_id, forecaster_id: nil)
+    new.list_closed_tournament_posts(tournament_id, forecaster_id: forecaster_id)
+  end
+
+  # Every closed or resolved forecastable post in a tournament (paginated),
+  # optionally only those forecaster_id forecast on. Used for coverage.
+  def list_closed_tournament_posts(tournament_id, forecaster_id: nil)
+    posts = []
+    offset = 0
+    loop do
+      query = {
+        forecast_type: %w[binary discrete multiple_choice numeric].join(','),
+        limit: 100,
+        offset: offset,
+        statuses: %w[closed resolved],
+        tournaments: [tournament_id]
+      }
+      query[:forecaster_id] = forecaster_id if forecaster_id
+      excon_response = with_retry { connection.get(path: '/api/posts/', query: query) }
+      results = JSON.parse(excon_response.body)['results'] || []
+      posts.concat(results)
+      break if results.length < 100
+
+      offset += 100
+    end
+    posts
   rescue Excon::Error => e
     puts e.response.inspect
     exit(1)
@@ -56,18 +121,20 @@ class Metaculus
   end
 
   def list_resolved_tournament_questions(tournament_id)
-    excon_response = connection.get(
-      path: '/api/posts/',
-      query: {
-        forecast_type: %w[binary discrete multiple_choice numeric].join(','),
-        forecaster_id: ENV['METACULUS_BOT_ID'],
-        include_description: true,
-        limit: 100,
-        statuses: 'resolved',
-        tournaments: [tournament_id],
-        with_cp: true
-      }
-    )
+    excon_response = with_retry do
+      connection.get(
+        path: '/api/posts/',
+        query: {
+          forecast_type: %w[binary discrete multiple_choice numeric].join(','),
+          forecaster_id: ENV['METACULUS_BOT_ID'],
+          include_description: true,
+          limit: 100,
+          statuses: 'resolved',
+          tournaments: [tournament_id],
+          with_cp: true
+        }
+      )
+    end
     data = JSON.parse(excon_response.body)
     questions = data['results'].map { |datum| Question.new(data: datum) }
     questions.reject! { |question| question.data['status'] == 'closed' }
@@ -81,11 +148,13 @@ class Metaculus
     Formatador.display_line "\n[bold][green]# Metaculus: Submitting Comment…[/] "
     body = data.to_json
     puts body
-    connection.post(
-      path: '/api/comments/create/',
-      body: data.to_json,
-      expects: 201
-    )
+    with_retry do
+      connection.post(
+        path: '/api/comments/create/',
+        body: data.to_json,
+        expects: 201
+      )
+    end
   rescue Excon::Error => e
     puts e.response.inspect
     exit(1)
@@ -95,11 +164,13 @@ class Metaculus
     Formatador.display_line "\n[bold][green]# Metaculus: Submitting Forecast…[/] "
     body = data.to_json
     puts body
-    connection.post(
-      path: '/api/questions/forecast/',
-      body: body,
-      expects: 201
-    )
+    with_retry do
+      connection.post(
+        path: '/api/questions/forecast/',
+        body: body,
+        expects: 201
+      )
+    end
   rescue Excon::Error => e
     puts e.response.inspect
     exit(1)
@@ -117,6 +188,24 @@ class Metaculus
         'content-type': 'application/json'
       }
     )
+  end
+
+  def with_retry(max_retries: 3, &block)
+    retries = 0
+    begin
+      block.call
+    rescue Excon::Error::TooManyRequests => e
+      retries += 1
+      if retries <= max_retries
+        retry_after = e.response&.headers&.dig('Retry-After')&.to_i || 5
+        Formatador.display_line(
+          "[yellow]# Metaculus: Rate-limited (429), waiting #{retry_after}s (retry #{retries}/#{max_retries})...[/]"
+        )
+        sleep(retry_after)
+        retry
+      end
+      raise
+    end
   end
 
   class Question
@@ -208,27 +297,27 @@ class Metaculus
       data = percentiles.dup
 
       # adjust any values exactly at bounds
-      range_size = (scaling['range_max'] - scaling['range_min']).abs
+      range_size = (upper_bound - lower_bound).abs
       buffer = range_size > 100 ? 1 : 0.01 * range_size
       data.each do |key, value|
-        if !scaling['open_lower_bound'] && value <= scaling['range_min'] + buffer
-          data[key] = scaling['range_min'] + buffer
+        if !scaling['open_lower_bound'] && value <= lower_bound + buffer
+          data[key] = lower_bound + buffer
         end
-        if !scaling['open_upper_bound'] && value >= scaling['range_max'] - buffer
-          data[key] = scaling['range_max'] - buffer
+        if !scaling['open_upper_bound'] && value >= upper_bound - buffer
+          data[key] = upper_bound - buffer
         end
       end
 
       # set cdf values outside of range
       if scaling['open_lower_bound']
-        data[0.01 * data.keys.min] = scaling['range_min'] if scaling['range_min'] < data[data.keys.min]
+        data[0.01 * data.keys.min] = lower_bound if lower_bound < data[data.keys.min]
       else
-        data[0.0] = scaling['range_min']
+        data[0.0] = lower_bound
       end
       if scaling['open_upper_bound']
-        data[99.9] = scaling['range_max'] if scaling['range_max'] > data[data.keys.max]
+        data[99.9] = upper_bound if upper_bound > data[data.keys.max]
       else
-        data[100.0] = scaling['range_max']
+        data[100.0] = upper_bound
       end
 
       # normalize percentiles
@@ -269,7 +358,6 @@ class Metaculus
       # - no mass outside closed bounds (scaling accordingly)
       # - at least minimum amount of mass outside open bounds
       # - increasing by at least minimum amount (0.01 / 200 = 0.0005)
-      # - TODO: add smoothing for spiky CDFs (exceed change of 0.59)
       scale_lower_to = scaling['open_lower_bound'] ? 0.0 : y_values.first
       scale_upper_to = scaling['open_upper_bound'] ? 1.0 : y_values.last
       rescaled_inbound_mass = scale_upper_to - scale_lower_to
@@ -290,6 +378,29 @@ class Metaculus
         y_values[i] = y_value.round(10)
       end
 
+      # Cap PMF to prevent spiky CDFs: max probability mass per step is 0.2
+      # (matches Metaculus template: 0.2 * DEFAULT_INBOUND_OUTCOME_COUNT / cdf_size)
+      # Use 0.95 wiggle room factor as in the reference implementation.
+      # Iterate until no step exceeds the cap because renormalization can push
+      # previously-capped values back above the limit.
+      cap = 0.2 * 200.0 / (y_values.length - 1) * 0.95
+      total_mass = y_values.each_cons(2).sum { |a, b| b - a }
+
+      loop do
+        pmf = y_values.each_cons(2).map { |a, b| b - a }
+        break unless pmf.any? { |v| v > cap + 1e-9 }
+
+        capped = pmf.map { |v| [v, cap].min }
+        # Renormalize so total mass equals the original span
+        capped_mass = capped.sum
+        break if capped_mass <= 0
+
+        capped.map! { |v| (v * total_mass / capped_mass).round(10) }
+        # Rebuild CDF starting from the original first value
+        cumulative = y_values.first
+        y_values = [cumulative] + capped.map { |v| (cumulative += v).round(10) }
+      end
+
       y_values
     end
 
@@ -297,11 +408,69 @@ class Metaculus
       @lower_bound ||= scaling['nominal_min'] || scaling['range_min']
     end
 
+    def resolve_time
+      ts = question['scheduled_resolve_time'] || question['actual_resolve_time']
+      ts && Time.parse(ts)
+    end
+
+    def placeholder_resolve?
+      rt = resolve_time
+      rt && rt.year >= 2099
+    end
+
+    def time_until_resolve
+      rt = resolve_time
+      return nil unless rt
+      return 'Already resolved' if rt <= Time.now
+      return 'No fixed resolution date' if placeholder_resolve?
+
+      days = ((rt - Time.now) / 86_400).floor
+      parts = ["#{days} day#{'s' unless days == 1}"]
+      years = (days / 365.25).round(1)
+      parts << "(≈ #{years} year#{'s' if years != 1})" if years >= 0.5
+      parts.join(' ')
+    end
+
+    def close_time
+      ts = question['scheduled_close_time'] || question['actual_close_time']
+      ts && Time.parse(ts)
+    end
+
+    def time_until_close
+      ct = close_time
+      return nil unless ct
+      return 'Already closed' if ct <= Time.now
+      days = ((ct - Time.now) / 86_400).floor
+      "#{days} day#{'s' unless days == 1}"
+    end
+
     def metadata_content
       @metadata_content ||= begin
         content = []
+        content << "Current Date: #{Time.now.strftime('%B %d, %Y')}"
         asked_on = Time.parse(data['created_at'])
         content << "Asked On: #{asked_on.strftime('%B %d, %Y')}"
+
+        # Resolution date and time remaining
+        if (rt = resolve_time)
+          if placeholder_resolve?
+            content << "Scheduled Resolution: No fixed resolution date"
+          elsif rt <= Time.now
+            content << "Scheduled Resolution: #{rt.strftime('%B %d, %Y')} (Already resolved)"
+          else
+            content << "Scheduled Resolution: #{rt.strftime('%B %d, %Y')} (#{time_until_resolve})"
+          end
+        end
+
+        # Close date
+        if (ct = close_time)
+          if ct <= Time.now
+            content << "Forecasting Closes: #{ct.strftime('%B %d, %Y')} (Already closed)"
+          else
+            content << "Forecasting Closes: #{ct.strftime('%B %d, %Y')} (#{time_until_close})"
+          end
+        end
+
         unless lower_bound.nil?
           content << if scaling['open_lower_bound']
                        "Nominal Lower Bound: #{lower_bound}"
@@ -309,7 +478,7 @@ class Metaculus
                        "Lower Bound: #{lower_bound}"
                      end
         end
-        content << "Units: #{units}" unless units.empty?
+        content << "Units: #{units}" unless units.nil? || units.empty?
         unless upper_bound.nil?
           content << if scaling['open_upper_bound']
                        "Nominal Upper Bound: #{upper_bound}"
@@ -333,7 +502,126 @@ class Metaculus
       @spot_peer_score ||= question.dig('my_forecasts', 'score_data', 'spot_peer_score')
     end
 
-    def submit(response)
+    def resolution
+      raw = question['resolution']
+      return 'Unresolved' if raw.nil?
+
+      case type
+      when 'binary'
+        case raw
+        when 0.0, 0 then 'No'
+        when 1.0, 1 then 'Yes'
+        when -1 then 'Ambiguous'
+        else raw.to_s
+        end
+      when 'numeric'
+        raw.to_s
+      when 'discrete'
+        if options
+          label = if raw.is_a?(Integer)
+                    options[raw]
+                  else
+                    # raw may be a string label; find it in the array
+                    idx = options.index(raw)
+                    idx ? options[idx] : raw.to_s
+                  end
+          label ? "#{raw} (#{label})" : raw.to_s
+        else
+          raw.to_s
+        end
+      when 'multiple_choice'
+        if options
+          if raw.is_a?(Integer)
+            options[raw] || raw.to_s
+          else
+            # raw may be a string label; find it in the array
+            idx = options.index(raw)
+            idx ? options[idx] : raw.to_s
+          end
+        else
+          raw.to_s
+        end
+      else
+        raw.to_s
+      end
+    end
+
+    def my_prediction
+      values = my_forecast_values
+      return 'No forecast' unless values
+
+      case type
+      when 'binary'
+        "#{(values[1] * 100).round(1)}% Yes"
+      when 'numeric', 'discrete'
+        return "CDF array (#{values.length} points)" unless cdf_xaxis && !cdf_xaxis.empty?
+
+        "#{format_value(cdf_quantile(values, 0.5))} (P50)"
+      when 'multiple_choice'
+        labels = options || values.each_index.map { |i| "opt #{i}" }
+        labels.zip(values).map { |opt, prob| "#{opt}: #{(prob * 100).round(1)}%" }.join(', ')
+      else
+        values.inspect
+      end
+    end
+
+    # A retro-facing summary of how the submitted forecast compares with the
+    # outcome. The direction label is computed from the outcome, and numeric
+    # summaries describe the whole distribution (P10/P50/P90 plus where the
+    # resolution fell in it), since peer score depends on more than the P50.
+    def error_summary
+      return 'Not yet resolved' if question['resolution'].nil?
+
+      values = my_forecast_values
+      return 'No forecast to compare' unless values
+
+      case type
+      when 'binary' then binary_error_summary(values)
+      when 'numeric', 'discrete' then continuous_error_summary(values)
+      when 'multiple_choice' then multiple_choice_error_summary(values)
+      else 'Unknown question type'
+      end
+    end
+
+    # Value at quantile q of a submitted CDF. continuous_range is already in
+    # question units (and log-spaced for log-scaled questions), so the value is
+    # read straight off it, interpolating between grid points.
+    def cdf_quantile(cdf, q)
+      xs = cdf_xaxis
+      idx = cdf.index { |v| v >= q }
+      return xs.last if idx.nil?
+      return xs[idx] if idx.zero? || cdf[idx] == cdf[idx - 1]
+
+      frac = (q - cdf[idx - 1]) / (cdf[idx] - cdf[idx - 1])
+      xs[idx - 1] + frac * (xs[idx] - xs[idx - 1])
+    end
+
+    # Forecast CDF evaluated at x (the forecast percentile the outcome landed on).
+    def cdf_at(cdf, x)
+      xs = cdf_xaxis
+      return cdf.first if x <= xs.first
+      return cdf.last if x >= xs.last
+
+      idx = xs.index { |v| v >= x }
+      frac = (x - xs[idx - 1]) / (xs[idx] - xs[idx - 1])
+      cdf[idx - 1] + frac * (cdf[idx] - cdf[idx - 1])
+    end
+
+    def my_comment
+      # Try local cache first
+      comment_path = "./tmp/#{post_id}/consensus/comment.json"
+      if File.exist?(comment_path)
+        comment_data = JSON.parse(File.read(comment_path))
+        return comment_data['text'] if comment_data['text']
+      end
+
+      Metaculus.latest_comment_text(Metaculus.get_comments(post_id)) ||
+        'Comments unavailable (no bot comment found on this post)'
+    rescue StandardError
+      'Comments unavailable (comment fetch failed)'
+    end
+
+    def submit(response, comment_text: nil)
       forecast_data = case type
                       when 'binary'
                         [{
@@ -356,7 +644,7 @@ class Metaculus
       metaculus = Metaculus.new
       metaculus.post_forecasts(forecast_data)
       cache_write(post_id, 'consensus/forecast.json', forecast_data.to_json)
-      comment_text = response.stripped_content('think')
+      comment_text ||= response.stripped_content('think')
       comment_data = {
         text: comment_text,
         parent: nil,
@@ -411,6 +699,79 @@ class Metaculus
 
     def cdf_xaxis
       @cdf_xaxis ||= scaling['continuous_range']
+    end
+
+    def my_forecast_values
+      question.dig('my_forecasts', 'latest', 'forecast_values')
+    end
+
+    def format_value(value)
+      unit_str = units.to_s.empty? ? '' : " #{units}"
+      "#{value.round(2)}#{unit_str}"
+    end
+
+    def binary_outcome
+      case question['resolution'].to_s.downcase
+      when 'yes', '1', '1.0' then 1.0
+      when 'no', '0', '0.0' then 0.0
+      end
+    end
+
+    def binary_error_summary(values)
+      outcome = binary_outcome
+      return "Ambiguous or annulled resolution (#{question['resolution']})" if outcome.nil?
+
+      p_yes = values[1]
+      gap = ((outcome - p_yes).abs * 100).round(1)
+      resolved = outcome == 1.0 ? 'Yes' : 'No'
+      direction = if gap.zero?
+                    'exact'
+                  elsif p_yes >= 0.5 ? outcome == 1.0 : outcome.zero?
+                    "right side, #{gap} pts short of #{resolved}"
+                  else
+                    "wrong side, #{gap} pts from #{resolved}"
+                  end
+      format('Forecast %<p>.1f%% Yes, resolved %<r>s: %<d>s; Brier %<b>.3f',
+             p: p_yes * 100, r: resolved, d: direction, b: (p_yes - outcome)**2)
+    end
+
+    def continuous_error_summary(values)
+      return 'Cannot compute error (no scaling range)' unless cdf_xaxis && !cdf_xaxis.empty?
+
+      p10, p50, p90 = [0.1, 0.5, 0.9].map { |q| cdf_quantile(values, q) }
+      spread = "P10 #{format_value(p10)} / P50 #{format_value(p50)} / P90 #{format_value(p90)}"
+      raw = question['resolution'].to_s
+      case raw
+      when 'above_upper_bound'
+        "Resolved above upper bound; forecast #{spread}; " \
+          "#{((1 - values.last) * 100).round(1)}% of mass above the upper bound"
+      when 'below_lower_bound'
+        "Resolved below lower bound; forecast #{spread}; " \
+          "#{(values.first * 100).round(1)}% of mass below the lower bound"
+      else
+        res = Float(raw, exception: false)
+        return "Unparseable resolution (#{raw}); forecast #{spread}" if res.nil?
+
+        pct = (cdf_at(values, res) * 100).round(1)
+        error = (res - p50).abs
+        rel = p50.zero? ? '' : format(' (%.1f%% of P50)', error / p50.abs * 100)
+        inside = res.between?(p10, p90) ? 'inside' : 'outside'
+        "Resolved #{format_value(res)}; forecast #{spread}; P50 error #{format_value(error)}#{rel}; " \
+          "resolution at forecast percentile #{pct} (#{inside} P10–P90)"
+      end
+    end
+
+    def multiple_choice_error_summary(values)
+      raw = question['resolution']
+      idx = raw.is_a?(Integer) ? raw : options&.index(raw.to_s)
+      return "Unmatched resolution (#{raw})" if idx.nil? || values[idx].nil?
+
+      assigned = values[idx]
+      rank = values.sort.reverse.index(assigned) + 1
+      label = options ? options[idx] : "option #{idx}"
+      format("Assigned %<a>.1f%% to correct answer '%<l>s' (ranked %<r>d of %<n>d); Brier %<b>.3f",
+             a: assigned * 100, l: label, r: rank, n: values.length,
+             b: values.each_with_index.sum { |v, i| (v - (i == idx ? 1 : 0))**2 })
     end
 
     def latest_aggregations

@@ -29,15 +29,7 @@ class Response
     )
   end
 
-  KNOWN_PROVIDERS = %i[openai deepseek perplexity open_router anthropic].freeze
-
-  def content
-    @content ||= begin
-      raise "Unknown provider: #{provider}" unless KNOWN_PROVIDERS.include?(provider)
-
-      openai_compatible_content
-    end
-  end
+  def content = @content ||= openai_compatible_content
 
   def reasoning_content = @reasoning_content ||= openai_compatible_reasoning_content
 
@@ -47,8 +39,6 @@ class Response
     @cost ||= case provider
               when :deepseek
                 deepseek_cost
-              when :perplexity
-                perplexity_cost
               when :open_router, :anthropic, :openai
                 open_router_cost
               else
@@ -58,13 +48,7 @@ class Response
 
   def input_tokens = @input_tokens ||= data.dig('usage', 'prompt_tokens') || 0
 
-  def output_tokens
-    @output_tokens ||= if provider == :perplexity
-                         perplexity_output_tokens
-                       else
-                         data.dig('usage', 'completion_tokens') || 0
-                       end
-  end
+  def output_tokens = @output_tokens ||= data.dig('usage', 'completion_tokens') || 0
 
   def total_tokens = @total_tokens ||= data.dig('usage', 'total_tokens') || (input_tokens + output_tokens)
 
@@ -82,19 +66,22 @@ class Response
     (data.dig('usage', 'cost') || 0) + (data.dig('usage', 'cost_details')&.values&.compact&.sum || 0)
   end
 
-  # OpenAI-compatible content (used by Perplexity, DeepSeek, OpenAI)
+  # OpenAI-compatible content (used by OpenRouter, DeepSeek, OpenAI)
   def openai_compatible_content
-    data['choices'].map { |choice| choice['message']['content'] }.join("\n")
+    choices = data['choices'] or raise "API error (no choices): #{data.inspect}"
+    choices.map { |choice| choice['message']['content'] }.join("\n")
   end
 
-  # OpenAI-compatible reasoning content (used by Perplexity, DeepSeek, OpenAI)
+  # OpenAI-compatible reasoning content (used by OpenRouter, DeepSeek, OpenAI)
   def openai_compatible_reasoning_content
-    data['choices'].map { |choice| choice['message']['reasoning_content'] }.join("\n")
+    choices = data['choices'] or raise "API error (no choices): #{data.inspect}"
+    choices.map { |choice| choice['message']['reasoning_content'] }.join("\n")
   end
 
-  # OpenAI-compatible tool_calls (used by Perplexity, DeepSeek, OpenAI)
+  # OpenAI-compatible tool_calls (used by OpenRouter, DeepSeek, OpenAI)
   def openai_compatible_tool_calls
-    data['choices'].map { |choice| choice['message']['tool_calls'] }.flatten.compact
+    choices = data['choices'] or raise "API error (no choices): #{data.inspect}"
+    choices.map { |choice| choice['message']['tool_calls'] }.flatten.compact
   end
 
   # DeepSeek-specific methods
@@ -104,16 +91,5 @@ class Response
     cost += (data.dig('usage', 'prompt_cache_miss_tokens') || 0) / 1_000_000.0 * 0.28  # $0.28/MTok
     cost += (output_tokens / 1_000_000.0) * 0.42 # $0.42/MTok
     cost.round(2)
-  end
-
-  # Perplexity-specific methods
-  def perplexity_cost
-    data.dig('usage', 'cost', 'total_cost') || 0.0
-  end
-
-  def perplexity_output_tokens
-    total = data.dig('usage', 'total_tokens') || 0
-    prompt = data.dig('usage', 'prompt_tokens') || 0
-    total - prompt
   end
 end

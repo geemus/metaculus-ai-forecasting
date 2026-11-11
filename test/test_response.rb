@@ -24,17 +24,6 @@ class ResponseTest < Minitest::Test
     }.to_json
   end
 
-  def perplexity_json(content: 'px', input: 80, total: 120, cost: 0.05)
-    {
-      'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],
-      'usage'   => {
-        'prompt_tokens' => input,
-        'total_tokens'  => total,
-        'cost'          => { 'total_cost' => cost }
-      }
-    }.to_json
-  end
-
   def open_router_json(content: 'or', input: 300, output: 100, total: 400, cost: 0.02)
     {
       'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],
@@ -61,11 +50,6 @@ class ResponseTest < Minitest::Test
     assert_equal 'ds content', r.content
   end
 
-  def test_content_perplexity_provider
-    r = Response.new(:perplexity, json: perplexity_json(content: 'px content'))
-    assert_equal 'px content', r.content
-  end
-
   def test_content_open_router_provider
     r = Response.new(:open_router, json: open_router_json(content: 'or content'))
     assert_equal 'or content', r.content
@@ -76,9 +60,9 @@ class ResponseTest < Minitest::Test
     assert_equal 'anthropic content', r.content
   end
 
-  def test_unknown_provider_raises
-    r = Response.new(:unknown_provider, json: openai_json)
-    assert_raises(RuntimeError) { r.content }
+  def test_content_gemini_provider
+    r = Response.new(:gemini, json: open_router_json(content: 'gemini content'))
+    assert_equal 'gemini content', r.content
   end
 
   # ---------------------------------------------------------------------------
@@ -107,11 +91,6 @@ class ResponseTest < Minitest::Test
     assert_equal 60, r.total_tokens
   end
 
-  def test_perplexity_output_tokens_derived_from_total_minus_input
-    r = Response.new(:perplexity, json: perplexity_json(input: 80, total: 120))
-    assert_equal 40, r.output_tokens
-  end
-
   def test_tokens_default_to_zero_for_empty_json
     r = Response.new(:openai, json: '{}')
     assert_equal 0, r.input_tokens
@@ -136,11 +115,6 @@ class ResponseTest < Minitest::Test
   def test_openai_cost_routed_to_open_router
     r = Response.new(:openai, json: open_router_json(cost: 0.01))
     assert_in_delta 0.01, r.cost, 0.0001
-  end
-
-  def test_perplexity_cost_from_total_cost_field
-    r = Response.new(:perplexity, json: perplexity_json(cost: 0.07))
-    assert_in_delta 0.07, r.cost, 0.0001
   end
 
   def test_deepseek_cost_calculation

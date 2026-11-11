@@ -3,17 +3,35 @@
 Your consensus forecast will be based on the context of these forecasts from other superforecasters.
 
 <forecasts>
+<%- label_index = 0 -%>
 <%- @revised_forecasts.each do |forecast| -%>
-<forecast>
+<%- label = ('A'.ord + label_index).chr; label_index += 1 -%>
+<forecast label="Forecaster <%= label %>">
 <%= forecast.stripped_content('think') %>
 </forecast>
 <%- end -%>
 </forecasts>
 
+<%- if @mechanical_baseline -%>
+# Mechanical aggregate baseline
+
+The forecasts above have been pooled using a calibrated mechanical aggregator (log-odds mean for binary and multiple-choice; quantile average for numeric/discrete). This baseline is **one input among several** — use it to orient yourself in the range of estimates, but prioritize reasoning quality over mechanical proximity.
+
+<baseline>
+<%= @mechanical_baseline %>
+</baseline>
+<%- end -%>
+
+<%- unless question.metadata_content.empty? -%>
+
+Question Metadata:
+<metadata>
+<%= question.metadata_content %>
+</metadata>
+<%- end -%>
+
 # Instructions
 
-- Before summarizing the consensus, identify the 2-3 largest divergences between the forecasts and explain which reasoning path is more epistemically sound and why.
-- Summarize the consensus of the forecasts.
-- Before summarizing the consensus, write:
-<%= SITUATION_SNAPSHOT -%>
-- After arriving at your consensus estimate, apply an extremization check: if the evidence strongly points in one direction, explicitly ask whether the consensus should be pushed further from 50%. State whether you are applying an extremization adjustment, by how much, and why. Only adjust if the cross-forecaster evidence genuinely warrants it — do not extremize mechanically.
+- Identify the 2-3 largest divergences between the forecasts and explain which reasoning path is more epistemically sound and why, citing the forecasts directly.
+- If you move the headline number more than ~10 percentage points (binary or per-option multiple choice) or more than ~10% of the inter-quartile range (numeric/discrete) away from the baseline, explicitly state which forecast's reasoning is decisive and why it overrides the pool.
+- The input forecasts may themselves contain impossible values; a bound-violating number should be corrected or excluded, never averaged into the consensus.

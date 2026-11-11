@@ -1,85 +1,66 @@
 # frozen_string_literal: true
 
-SEARCH_TOOL = {
+require_relative 'calculator'
+
+CALCULATOR_TOOL = {
   type: 'function',
   function: {
-    name: 'search',
+    name: 'calculate',
     description: <<~DESCRIPTION,
-      Search for public information related to a particular prompt.
+      Evaluate an arithmetic expression safely and return the result.
 
       # Usage
-      - Provides access to information that is newer than or missing from training data.
-      - Decompose complex questions into focused sub-queries for better results.
-      - Prefer specific, targeted queries over broad ones.
-      - Include date context (e.g. "as of 2025") for time-sensitive topics.
+      - Use for any computation with more than two numbers or more than one operation.
+      - Use for percentage math, compounding, expected values, Bayes updates.
+      - Use when precision matters (e.g. normalization, log-odds conversion).
+      - Prefer a single expression; chain via multiple calls if needed.
 
-      # Relevance
-      - Use for current events, recent developments, or missing information.
-      - Use when base rates or historical frequencies are unknown.
-      - Use to verify claims or check for contradicting evidence.
+      # Supported
+      - Operators: +, -, *, /, ^ (exponentiation), % (modulo)
+      - Functions: SQRT, LOG, LOG10, LOG2, EXP, ABS, ROUND(n), ROUNDDOWN, ROUNDUP
+      - Constants: PI, E
+      - Grouping: parentheses
+      - Functions are case-insensitive (round, ROUND, Round all work).
+
+      # Examples
+      - "0.35 * 0.8 + 0.65 * 0.2"
+      - "LOG(0.5 / 0.5)"
+      - "100 * (1.02 ^ 5)"
+      - "SQRT(0.3 * 0.7 / 100)"
+      - "ROUND(42.6789, 2)"
     DESCRIPTION
     parameters: {
       type: 'object',
       properties: {
-        prompt: {
+        expression: {
           type: 'string',
-          description: 'Full sentences or paragraphs to prompt web search with context and instructions.'
+          description: 'The arithmetic expression to evaluate (e.g. "0.35 * 0.8 + 0.65 * 0.2").'
         }
-      }
-    },
-    required: ['prompt']
-  }
-}.freeze
-
-THINK_TOOL = {
-  type: 'function',
-  function: {
-    name: 'think',
-    description: <<~DESCRIPTION,
-      Think out loud, take notes, form plans.
-
-      # Usage
-      - Has no external effects.
-
-      # Relevance
-      - Skip for trivial single-step tasks.
-    DESCRIPTION
-    parameters: {
-      type: 'object',
-      properties: {
-        thoughts: {
-          type: 'string',
-          description: 'The thoughts, notes, or plans.'
-        }
-      }
+      },
+      required: ['expression']
     }
   }
 }.freeze
 
 module Tools
   class << self
-    def search(arguments)
-      prompt = arguments['prompt']
-      Formatador.display "\n[bold][green]# Researcher: Searching[faint](#{prompt})[/]…[/] "
-
-      llm = Perplexity.new(
-        model: 'sonar-pro',
-        system: <<~SYSTEM)
-          You are an experienced research assistant for a superforecaster.
-
-          # Guidance
-          - Prioritize clarity and conciseness.
-          - Generate research summaries that are concise while retaining necessary detail.
-        SYSTEM
-      llm.eval(
-        { 'role': 'user', 'content': prompt }
-      )
+    def calculate(arguments)
+      expression = arguments['expression']
+      result = Calculator.evaluate(expression)
+      result.to_s
     end
 
-    def think(arguments)
-      thoughts = arguments['thoughts']
-      Formatador.display_line "\n[bold][green]Thinking[faint](#{thoughts})[/]"
-      'Thought thoughts.'
+    # Shared tool-call dispatch.  Used by all tool-capable clients
+    # (OpenRouter, DeepSeek) so that tool routing stays in one place.
+    def dispatch(tool_call)
+      arguments = JSON.parse(tool_call.dig('function', 'arguments'))
+      tool = tool_call.dig('function', 'name')
+      case tool
+      when 'calculate'
+        calculate(arguments)
+      else
+        raise "Unknown Tool Requested: `#{tool}`"
+      end
     end
   end
 end

@@ -7,12 +7,14 @@ class OpenRouter
   attr_accessor :model, :reasoning, :system, :temperature, :tools
 
   def initialize(
-    model: 'anthropic/claude-sonnet-4.5',
+    api_key: ENV['OPEN_ROUTER_API_KEY'],
+    model:,
     reasoning: { effort: 'medium' },
     system: SUPERFORECASTER_SYSTEM_PROMPT,
     temperature: 0.1,
-    tools: [SEARCH_TOOL]
+    tools: [CALCULATOR_TOOL]
   )
+    @api_key = api_key
     @model = model
     @reasoning = reasoning
     @system = system
@@ -55,19 +57,8 @@ class OpenRouter
     else
       messages.last['tool_calls'] = response.tool_calls
       response.tool_calls.each do |tool_call|
-        arguments = JSON.parse(tool_call.dig('function', 'arguments'))
-        tool = tool_call.dig('function', 'name')
-        content = case tool
-                  when 'search'
-                    Tools.search(arguments).content
-                  when 'think'
-                    Tools.think(arguments)
-                  else
-                    raise "Unknown Tool Requested: `#{tool}`"
-                  end
-
         messages << {
-          'content' => content,
+          'content' => Tools.dispatch(tool_call),
           'role' => 'tool',
           'tool_call_id' => tool_call['id']
         }
@@ -76,7 +67,7 @@ class OpenRouter
       self.eval(*messages)
     end
   rescue JSON::ParserError
-    retries = defined?(retries) ? retries + 1 : 1
+    retries = (retries || 0) + 1
     retry if retries <= 3
     raise
   rescue Excon::Error => e
@@ -93,7 +84,7 @@ class OpenRouter
       expects: 200,
       headers: {
         'accept': 'application/json',
-        'authorization': "Bearer #{ENV['OPEN_ROUTER_API_KEY']}",
+        'authorization': "Bearer #{@api_key}",
         'content-type': 'application/json'
       },
       idempotent: true,

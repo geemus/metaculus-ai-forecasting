@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative '../aggregation'
+require_relative '../prompt_version'
+
 module ResponseHelpers
   def extracted_content(*tags)
     extract_xml(content, *tags).last
@@ -11,6 +14,8 @@ module ResponseHelpers
     @percentiles ||= begin
       percentiles = {}
       extracted_content('percentiles').split("\n").each do |line|
+        line = line.strip
+        next if line.empty?
         key, value = line.split(': ', 2)
         key = key.split('Percentile ', 2).last
         value = value.split(' ', 2).first
@@ -43,10 +48,10 @@ module ResponseHelpers
     @probabilities ||= begin
       probabilities = {}
       extracted_content('probabilities').split("\n").each do |line|
-        line = line.gsub('Option ', '')
-        line = line.gsub('"', '')
-        key, value = line.split(': ', 2)
-        probabilities[key] = value.include?('%') ? value.to_f / 100.0 : value.to_f
+        line = line.strip
+        next if line.empty?
+        key, value = line.rpartition(': ').values_at(0, 2)
+        probabilities[key.strip] = parse_probability(value)
       end
       probabilities
     end
@@ -54,16 +59,41 @@ module ResponseHelpers
 
   def probability
     @probability ||= begin
-      probability = extracted_content('probability')
-      probability = probability.include?('%') ? probability.to_f / 100.0 : probability.to_f
-      clamped = probability.clamp(0.001, 0.999)
+      probability = parse_probability(extracted_content('probability'))
+      clamped = probability.clamp(Aggregation::EPSILON, 1.0 - Aggregation::EPSILON)
       warn "WARNING: probability #{probability} clamped to #{clamped}" if clamped != probability
       clamped
     end
   end
 
+  # Parse a probability string that may be written as "45%", "45", or "0.45".
+  # A bare number greater than 1 is treated as a percentage so the model
+  # forgetting the % sign doesn't get clamped to 99.9%.
+  def parse_probability(text)
+    value = text.to_f
+    value /= 100.0 if text.include?('%') || value > 1.0
+    value
+  end
+
+  def calibration_disclaimer
+    @calibration_disclaimer ||= extracted_content('calibration_disclaimer')
+  end
+
   def stripped_content(*tags)
     strip_xml(content, *tags)
+  end
+
+  # Prompt version this response was generated under (nil for responses
+  # cached before stamping was added).
+  def prompt_version
+    data['prompt_version']
+  end
+
+  # Record the current prompt version on a freshly generated response,
+  # before it is cached.
+  def stamp_prompt_version!
+    data.merge!(PromptVersion.stamp)
+    self
   end
 
   def to_json(*args)

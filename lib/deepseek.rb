@@ -7,7 +7,7 @@ class DeepSeek
   attr_accessor :model, :system, :temperature, :tools
 
   def initialize(
-    model: 'deepseek-reasoner',
+    model: 'deepseek-v4-pro',
     system: SUPERFORECASTER_SYSTEM_PROMPT,
     temperature: 0.1,
     tools: []
@@ -51,19 +51,8 @@ class DeepSeek
     else
       messages.last['tool_calls'] = response.tool_calls
       response.tool_calls.each do |tool_call|
-        arguments = JSON.parse(tool_call.dig('function', 'arguments'))
-        tool = tool_call.dig('function', 'name')
-        content = case tool
-                  when 'search'
-                    Tools.search(arguments).content
-                  when 'think'
-                    Tools.think(arguments)
-                  else
-                    raise "Unknown Tool Requested: `#{tool}`"
-                  end
-
         messages << {
-          'content' => content,
+          'content' => Tools.dispatch(tool_call),
           'role' => 'tool',
           'tool_call_id' => tool_call['id']
         }
@@ -72,7 +61,7 @@ class DeepSeek
       self.eval(*messages)
     end
   rescue JSON::ParserError
-    retries = defined?(retries) ? retries + 1 : 1
+    retries = (retries || 0) + 1
     retry if retries <= 3
     raise
   rescue Excon::Error => e

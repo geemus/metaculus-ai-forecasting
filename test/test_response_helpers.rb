@@ -27,25 +27,25 @@ class ResponseHelpersTest < Minitest::Test
     assert_in_delta 0.42, r.probability, 0.0001
   end
 
-  def test_probability_parses_integer_percentage
+  def test_probability_clamps_100_percent
     r = make_response('<probability>100%</probability>')
-    # clamped to 0.999
-    assert_in_delta 0.999, r.probability, 0.0001
+    assert_in_delta 1.0 - Aggregation::EPSILON, r.probability, 1e-9
   end
 
-  def test_probability_clamps_above_1
-    r = make_response('<probability>1.5</probability>')
-    assert_in_delta 0.999, r.probability, 0.0001
+  # A bare number above 1 is read as a percentage (model dropped the % sign).
+  def test_probability_bare_number_above_1_is_percentage
+    r = make_response('<probability>45</probability>')
+    assert_in_delta 0.45, r.probability, 0.0001
   end
 
   def test_probability_clamps_below_0
     r = make_response('<probability>-0.1</probability>')
-    assert_in_delta 0.001, r.probability, 0.0001
+    assert_in_delta Aggregation::EPSILON, r.probability, 1e-9
   end
 
   def test_probability_clamps_zero
     r = make_response('<probability>0%</probability>')
-    assert_in_delta 0.001, r.probability, 0.0001
+    assert_in_delta Aggregation::EPSILON, r.probability, 1e-9
   end
 
   def test_probability_uses_last_tag_when_multiple_present
@@ -169,27 +169,17 @@ class ResponseHelpersTest < Minitest::Test
     assert_in_delta 0.4, r.probabilities['No'],  0.001
   end
 
-  def test_probabilities_strips_option_prefix
+  # Keys are kept verbatim so they match question.options exactly; splitting on
+  # the last ': ' lets option names themselves contain colons.
+  def test_probabilities_keeps_option_names_verbatim
     content = <<~CONTENT
       <probabilities>
       Option A: 50%
-      Option B: 50%
+      Ratio 2: 1 or higher: 50%
       </probabilities>
     CONTENT
     r = make_response(content)
-    assert r.probabilities.key?('A'), "Expected key 'A', got: #{r.probabilities.keys.inspect}"
-    assert r.probabilities.key?('B')
-  end
-
-  def test_probabilities_strips_quotes_from_keys
-    content = <<~CONTENT
-      <probabilities>
-      "Yes": 60%
-      "No": 40%
-      </probabilities>
-    CONTENT
-    r = make_response(content)
-    assert r.probabilities.key?('Yes'), "Expected key 'Yes', got: #{r.probabilities.keys.inspect}"
+    assert_equal({ 'Option A' => 0.5, 'Ratio 2: 1 or higher' => 0.5 }, r.probabilities)
   end
 
   # ---------------------------------------------------------------------------

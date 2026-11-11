@@ -27,11 +27,4 @@ Criteria for determining forecast outcome, which have not yet been met:
 <criteria>
 <%= question.criteria_content %>
 </criteria>
-<%- unless question.aggregate_content.empty? -%>
-
-Existing Metaculus Community Aggregates:
-<aggregates>
-<%= question.aggregate_content %>
-</aggregates>
-<%- end -%>
 </context>
