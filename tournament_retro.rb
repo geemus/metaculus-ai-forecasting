@@ -7,6 +7,14 @@ tournament_id = ARGV[0] || raise('tournament id argument is required')
 
 questions = Metaculus.list_resolved_tournament_questions(tournament_id)
 
+# Coverage is printed outside the LLM retro so it is always visible: missed
+# questions score nothing, and skipped scheduled runs otherwise go unnoticed.
+coverage = Coverage.compute(
+  Metaculus.list_closed_tournament_posts(tournament_id),
+  Metaculus.list_closed_tournament_posts(tournament_id, forecaster_id: ENV['METACULUS_BOT_ID']).map { |p| p['id'] }
+)
+Formatador.display_line(Coverage.report(coverage, tournament_id))
+
 puts "NOTE: doesn't paginate, so will miss questions if there are more than 100"
 
 # Extract full XML elements including attributes (for self-closing-like
@@ -142,3 +150,6 @@ RETRO_PROMPT
 
 retro = llm.eval({ 'role': 'user', 'content': retro_prompt })
 puts retro.content
+
+# Repeat at the end so it is the last thing on screen.
+Formatador.display_line(Coverage.report(coverage, tournament_id))
