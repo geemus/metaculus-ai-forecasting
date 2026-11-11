@@ -57,6 +57,10 @@ class UtilityTest < Minitest::Test
     assert_includes result, 'between'
   end
 
+  def test_strip_xml_repeated_tag_keeps_text_between
+    assert_equal 'akeepb', strip_xml('a<t>1</t>keep<t>2</t>b', 't')
+  end
+
   def test_strip_xml_no_match_returns_unchanged
     assert_equal 'no tags here', strip_xml('no tags here', 'missing')
   end

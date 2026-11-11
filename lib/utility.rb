@@ -64,8 +64,8 @@ end
 def strip_xml(text, *tags)
   stripped = text.dup
   tags.each do |tag|
-    regex = %r{<#{tag}>([\s\S]*)</#{tag}>}
-    stripped.gsub!(regex, '')&.strip
+    regex = %r{<#{tag}>([\s\S]*?)</#{tag}>}
+    stripped.gsub!(regex, '')
   end
   stripped.strip
 end
