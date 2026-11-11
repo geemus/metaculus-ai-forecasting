@@ -85,6 +85,37 @@ class Metaculus
     comment && comment['text']
   end
 
+  def self.list_closed_tournament_posts(tournament_id, forecaster_id: nil)
+    new.list_closed_tournament_posts(tournament_id, forecaster_id: forecaster_id)
+  end
+
+  # Every closed or resolved forecastable post in a tournament (paginated),
+  # optionally only those forecaster_id forecast on. Used for coverage.
+  def list_closed_tournament_posts(tournament_id, forecaster_id: nil)
+    posts = []
+    offset = 0
+    loop do
+      query = {
+        forecast_type: %w[binary discrete multiple_choice numeric].join(','),
+        limit: 100,
+        offset: offset,
+        statuses: %w[closed resolved],
+        tournaments: [tournament_id]
+      }
+      query[:forecaster_id] = forecaster_id if forecaster_id
+      excon_response = with_retry { connection.get(path: '/api/posts/', query: query) }
+      results = JSON.parse(excon_response.body)['results'] || []
+      posts.concat(results)
+      break if results.length < 100
+
+      offset += 100
+    end
+    posts
+  rescue Excon::Error => e
+    puts e.response.inspect
+    exit(1)
+  end
+
   def self.list_resolved_tournament_questions(tournament_id)
     new.list_resolved_tournament_questions(tournament_id)
   end
