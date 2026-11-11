@@ -2,6 +2,8 @@
 
 require './lib/helpers/response'
 
+# A provider-agnostic wrapper around one LLM API response: content, token
+# usage, cost and tool calls.
 class Response
   include ResponseHelpers
 
@@ -63,7 +65,7 @@ class Response
   end
 
   def open_router_cost
-    (data.dig('usage', 'cost') || 0) + (data.dig('usage', 'cost_details')&.values&.compact&.sum || 0)
+    (data.dig('usage', 'cost') || 0) + (data.dig('usage', 'cost_details')&.values&.compact&.sum || 0) # rubocop:disable Style/SafeNavigationChainLength
   end
 
   # OpenAI-compatible content (used by OpenRouter, DeepSeek, OpenAI)

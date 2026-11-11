@@ -2,6 +2,8 @@
 
 require_relative 'asknews'
 
+# Builds the structured pipeline comment posted to Metaculus with each forecast
+# (research summary, per-forecaster positions, consensus analysis, prompt versions).
 module CommentBuilder
   MAX_COMMENT_LENGTH = 10_000
 

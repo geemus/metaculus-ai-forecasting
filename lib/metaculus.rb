@@ -5,6 +5,7 @@ require 'formatador'
 require 'json'
 require 'time'
 
+# Metaculus API client: fetches posts and tournaments, submits forecasts and comments.
 class Metaculus
   def self.get_post(id)
     new.get_post(id)
@@ -197,7 +198,7 @@ class Metaculus
     rescue Excon::Error::TooManyRequests => e
       retries += 1
       if retries <= max_retries
-        retry_after = e.response&.headers&.dig('Retry-After')&.to_i || 5
+        retry_after = e.response&.headers&.dig('Retry-After')&.to_i || 5 # rubocop:disable Style/SafeNavigationChainLength
         Formatador.display_line(
           "[yellow]# Metaculus: Rate-limited (429), waiting #{retry_after}s (retry #{retries}/#{max_retries})...[/]"
         )
@@ -208,6 +209,8 @@ class Metaculus
     end
   end
 
+  # Wraps a post's question data for all four question types (binary, numeric,
+  # discrete, multiple_choice): metadata, aggregates, resolution and scoring.
   class Question
     attr_accessor :data
 
@@ -508,33 +511,21 @@ class Metaculus
         else raw.to_s
         end
       when 'discrete'
-        if options
-          label = if raw.is_a?(Integer)
-                    options[raw]
-                  else
-                    # raw may be a string label; find it in the array
-                    idx = options.index(raw)
-                    idx ? options[idx] : raw.to_s
-                  end
-          label ? "#{raw} (#{label})" : raw.to_s
-        else
-          raw.to_s
-        end
+        label = resolution_label(raw)
+        label ? "#{raw} (#{label})" : raw.to_s
       when 'multiple_choice'
-        if options
-          if raw.is_a?(Integer)
-            options[raw] || raw.to_s
-          else
-            # raw may be a string label; find it in the array
-            idx = options.index(raw)
-            idx ? options[idx] : raw.to_s
-          end
-        else
-          raw.to_s
-        end
+        resolution_label(raw) || raw.to_s
       else
         raw.to_s
       end
+    end
+
+    # The option label for a resolution: an Integer indexes into options;
+    # anything else is already a label. Nil when the question has no options.
+    def resolution_label(raw)
+      return unless options
+
+      raw.is_a?(Integer) ? options[raw] : raw.to_s
     end
 
     def my_prediction

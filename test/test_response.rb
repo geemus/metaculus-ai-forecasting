@@ -10,7 +10,7 @@ class ResponseTest < Minitest::Test
     }.to_json
   end
 
-  def deepseek_json(content: 'ds', input: 200, output: 100, total: 300,
+  def deepseek_json(content: 'ds', input: 200, output: 100, total: 300, # rubocop:disable Metrics/ParameterLists
                     cache_hit: 50, cache_miss: 150)
     {
       'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],

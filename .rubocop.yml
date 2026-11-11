@@ -7,9 +7,23 @@ AllCops:
     - 'coverage/**/*'
     - 'vendor/**/*'
 
-# Prompt-building methods and pipeline scripts are long by nature; splitting
-# them to satisfy size/complexity limits adds churn without improving clarity.
-Metrics:
+# Size and complexity limits are off: prompt-building methods and pipeline
+# scripts are long by nature, and splitting them to satisfy the limits adds
+# churn without improving clarity. Nesting depth and parameter counts stay on;
+# they flag real design smells and have few exceptions (disabled inline).
+Metrics/AbcSize:
+  Enabled: false
+Metrics/BlockLength:
+  Enabled: false
+Metrics/ClassLength:
+  Enabled: false
+Metrics/CyclomaticComplexity:
+  Enabled: false
+Metrics/MethodLength:
+  Enabled: false
+Metrics/ModuleLength:
+  Enabled: false
+Metrics/PerceivedComplexity:
   Enabled: false
 
 # Prompts and their helpers are prose-heavy; wrapping them for line length
@@ -18,18 +32,10 @@ Metrics:
 Layout/LineLength:
   Enabled: false
 
-# Small, script-style codebase; class-level doc comments add noise.
-Style/Documentation:
-  Enabled: false
-
 # Test names like `test_cdf_stays_within_0_1` read better than the alternatives.
 Naming/VariableNumber:
-  Enabled: false
-
-# `resp&.headers&.dig(...)&.to_i` chains are clearer than nested guards for
-# optional API response fields.
-Style/SafeNavigationChainLength:
-  Enabled: false
+  Exclude:
+    - 'test/**/*'
 
 # RuboCop defaults plus conventional single-letter names in math helpers
 # (logit(p), sigmoid(x), ...).

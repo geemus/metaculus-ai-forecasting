@@ -3,10 +3,12 @@
 require './lib/response'
 require './lib/tools'
 
+# OpenRouter chat-completions client with a tool-call loop (via Tools.dispatch);
+# serves the :openai, :gemini and :anthropic providers.
 class OpenRouter
   attr_accessor :model, :reasoning, :system, :temperature, :tools
 
-  def initialize(
+  def initialize( # rubocop:disable Metrics/ParameterLists
     model:, api_key: ENV.fetch('OPEN_ROUTER_API_KEY', nil),
     reasoning: { effort: 'medium' },
     system: SUPERFORECASTER_SYSTEM_PROMPT,

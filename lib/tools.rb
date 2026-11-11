@@ -42,6 +42,7 @@ CALCULATOR_TOOL = {
   }
 }.freeze
 
+# Handlers for LLM tool calls.
 module Tools
   class << self
     def calculate(arguments)

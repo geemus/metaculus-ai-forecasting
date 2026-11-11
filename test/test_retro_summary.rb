@@ -5,7 +5,7 @@ require_relative 'test_helper'
 # Retro-facing summaries (my_prediction / error_summary) read the bot's own
 # latest forecast off a resolved question.
 class TestRetroSummary < Minitest::Test
-  def build(type:, resolution:, values:, scaling: nil, options: nil, unit: nil)
+  def build(type:, resolution:, values:, scaling: nil, options: nil, unit: nil) # rubocop:disable Metrics/ParameterLists
     question = {
       'type' => type,
       'resolution' => resolution,

@@ -5,6 +5,7 @@ require 'formatador'
 require 'json'
 require 'time'
 
+# AskNews API client: searches recent and archived news for a question.
 class AskNews
   def self.search_news(params)
     new.search_news(params)

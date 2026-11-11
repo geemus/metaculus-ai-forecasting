@@ -3,6 +3,7 @@
 require './lib/response'
 require './lib/tools'
 
+# DeepSeek chat-completions client with a tool-call loop (via Tools.dispatch).
 class DeepSeek
   attr_accessor :model, :system, :temperature, :tools
 

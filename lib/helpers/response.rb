@@ -3,6 +3,8 @@
 require_relative '../aggregation'
 require_relative '../prompt_version'
 
+# Parses forecast values (probability, percentiles, probabilities) and XML-tagged
+# sections out of an LLM response's text content.
 module ResponseHelpers
   def extracted_content(*tags)
     extract_xml(content, *tags).last
