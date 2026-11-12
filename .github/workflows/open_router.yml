@@ -5,19 +5,27 @@ on:
   schedule:
     - cron: "5 */8 * * *" # run every 8 hours, starting at 5 past the hour
 
+# Auto top-up adds $35 whenever the account balance drops below $35, so the
+# balance normally swings between ~$0 and ~$70. Only alert well below the
+# top-up trigger, i.e. when top-up appears to have failed.
+env:
+  ALERT_THRESHOLD: "10"
+
 jobs:
   credit_remaining:
     runs-on: ubuntu-latest
     steps:
-      - id: get_limit_remaining
+      - name: Check account balance
         env:
           OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
         run: |
-          echo "LIMIT_REMAINING=$(curl "https://openrouter.ai/api/v1/key" -H "Authorization: Bearer $OPEN_ROUTER_API_KEY" | jq -c '.data.limit_remaining')" >> $GITHUB_ENV
-      - id: set_summary
-        run: |
-          echo "\$${{ env.LIMIT_REMAINING }}" >> $GITHUB_STEP_SUMMARY
-      - id: low_credit_alert
-        if: ${{ env.LIMIT_REMAINING != 'null' && fromJSON(env.LIMIT_REMAINING) < 30.0 }}
-        run: |
-          exit 1
+          set -euo pipefail
+          # Account balance (not the per-key limit, which is null for uncapped keys).
+          balance=$(curl -sSf "https://openrouter.ai/api/v1/credits" \
+            -H "Authorization: Bearer $OPEN_ROUTER_API_KEY" \
+            | jq -er '.data.total_credits - .data.total_usage')
+          printf '$%.2f remaining (alert below $%s)\n' "$balance" "$ALERT_THRESHOLD" | tee -a "$GITHUB_STEP_SUMMARY"
+          if jq -en --argjson b "$balance" --argjson t "$ALERT_THRESHOLD" '$b < $t' >/dev/null; then
+            echo "::error::OpenRouter balance \$$balance is below \$$ALERT_THRESHOLD; auto top-up may have failed"
+            exit 1
+          fi
