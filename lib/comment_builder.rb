@@ -168,8 +168,12 @@ module CommentBuilder
 
       confidence = forecast.extracted_content('confidence') || 'N/A'
       argument = extract_key_argument(forecast)
+      # The model the API actually served: forecasters request ~*-latest
+      # aliases, so the provider name alone doesn't pin the model version.
+      model = forecast.data['model']
+      model_attr = model ? %( model="#{xml_escape(model)}") : ''
 
-      %(<forecaster provider="#{xml_escape(provider)}" value="#{xml_escape(value)}" pre_revision="#{xml_escape(pre_revision)}" confidence="#{xml_escape(confidence)}">\n#{xml_escape(argument)}\n</forecaster>)
+      %(<forecaster provider="#{xml_escape(provider)}"#{model_attr} value="#{xml_escape(value)}" pre_revision="#{xml_escape(pre_revision)}" confidence="#{xml_escape(confidence)}">\n#{xml_escape(argument)}\n</forecaster>)
     end
 
     ['## Forecaster Positions', *elements].join("\n")

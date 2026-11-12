@@ -94,7 +94,8 @@ retro_prompt = <<~RETRO_PROMPT
   Pipeline-generated questions include structured XML in their comments:
   - `<research_summary>` — The research phase's executive summary, including the researcher's overall outcome range. Forecasters never see it (their brief gives evidence and drivers only), so its distance from the final forecast measures how far they moved from the researcher's view.
   - `<forecaster>` — Per-provider forecast with attributes:
-    - `provider` — Model name (#{forecaster_names})
+    - `provider` — Forecaster slot (#{forecaster_names})
+    - `model` — The exact model that produced the final forecast (absent on older comments). Slots track the latest model in a family, so the model can change within a tournament; compare performance by model as well as by provider.
     - `value` — Final (post-revision) forecast value
     - `pre_revision` — Forecast value BEFORE the Delphi revise stage (enables measuring herding vs. refinement)
     - `confidence` — Self-assessed confidence rating

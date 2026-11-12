@@ -14,8 +14,9 @@ class TestCommentBuilder < Minitest::Test
     FileUtils.rm_rf("./tmp/#{POST_ID}")
   end
 
-  def response(provider, pct)
+  def response(provider, pct, model: nil)
     body = { 'choices' => [{ 'message' => { 'content' => "<probability>\n#{pct}%\n</probability>" } }] }
+    body['model'] = model if model
     Response.new(provider, json: body.to_json)
   end
 
@@ -37,5 +38,17 @@ class TestCommentBuilder < Minitest::Test
     end
     assert_includes out, 'value="23.0%" pre_revision="N/A"'
     assert_match(/no original forecast for openai/, err)
+  end
+
+  def test_records_resolved_model
+    out = CommentBuilder.build_forecaster_positions(POST_ID, binary_question,
+                                                    [response(:openai, 23, model: 'openai/gpt-6.1-sol')])
+    assert_includes out, '<forecaster provider="openai" model="openai/gpt-6.1-sol" value="23.0%"'
+  end
+
+  def test_omits_model_when_absent
+    out = nil
+    capture_io { out = CommentBuilder.build_forecaster_positions(POST_ID, binary_question, [response(:openai, 23)]) }
+    refute_includes out, 'model='
   end
 end
