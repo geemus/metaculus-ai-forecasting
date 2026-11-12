@@ -31,10 +31,13 @@ module Provider
       case provider_symbol
       when :anthropic
         args[:model] ||= 'anthropic/claude-opus-5.5'
+      # Forecasters use OpenRouter's ~*-latest aliases so the ensemble tracks
+      # the frontier without code changes; the resolved model is recorded per
+      # forecaster in the pipeline comment (see CommentBuilder).
       when :gemini
-        args[:model] ||= 'google/gemini-2.5-pro'
+        args[:model] ||= '~google/gemini-pro-latest'
       when :openai
-        args[:model] ||= 'openai/gpt-5.6-sol'
+        args[:model] ||= '~openai/gpt-sol-latest'
         args[:api_key] ||= ENV['OPEN_ROUTER_OPENAI_API_KEY'] || ENV.fetch('OPEN_ROUTER_API_KEY', nil)
       end
 
