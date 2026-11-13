@@ -39,7 +39,6 @@ jobs:
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       ASKNEWS_API_KEY: ${{ secrets.ASKNEWS_API_KEY }}
-      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
       METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
       OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}

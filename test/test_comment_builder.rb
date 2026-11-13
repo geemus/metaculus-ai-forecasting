@@ -14,9 +14,10 @@ class TestCommentBuilder < Minitest::Test
     FileUtils.rm_rf("./tmp/#{POST_ID}")
   end
 
-  def response(provider, pct, model: nil)
+  def response(provider, pct, model: nil, host: nil)
     body = { 'choices' => [{ 'message' => { 'content' => "<probability>\n#{pct}%\n</probability>" } }] }
     body['model'] = model if model
+    body['provider'] = host if host
     Response.new(provider, json: body.to_json)
   end
 
@@ -50,5 +51,13 @@ class TestCommentBuilder < Minitest::Test
     out = nil
     capture_io { out = CommentBuilder.build_forecaster_positions(POST_ID, binary_question, [response(:openai, 23)]) }
     refute_includes out, 'model='
+    refute_includes out, 'host='
+  end
+
+  def test_records_serving_host
+    out = CommentBuilder.build_forecaster_positions(POST_ID, binary_question,
+                                                    [response(:deepseek, 23, model: 'deepseek/deepseek-v4-pro',
+                                                                             host: 'DeepSeek')])
+    assert_includes out, '<forecaster provider="deepseek" model="deepseek/deepseek-v4-pro" host="DeepSeek" value="23.0%"'
   end
 end

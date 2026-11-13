@@ -96,6 +96,7 @@ retro_prompt = <<~RETRO_PROMPT
   - `<forecaster>` — Per-provider forecast with attributes:
     - `provider` — Forecaster slot (#{forecaster_names})
     - `model` — The exact model that produced the final forecast (absent on older comments). Slots track the latest model in a family, so the model can change within a tournament; compare performance by model as well as by provider.
+    - `host` — The upstream host that served the model (absent on older comments). A slot may fall back from its primary host to a third-party one; check whether fallback-served forecasts perform differently.
     - `value` — Final (post-revision) forecast value
     - `pre_revision` — Forecast value BEFORE the Delphi revise stage (enables measuring herding vs. refinement)
     - `confidence` — Self-assessed confidence rating

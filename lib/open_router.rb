@@ -4,13 +4,14 @@ require './lib/response'
 require './lib/tools'
 
 # OpenRouter chat-completions client with a tool-call loop (via Tools.dispatch);
-# serves the :openai, :gemini and :anthropic providers.
+# serves every provider (see Provider).
 class OpenRouter
-  attr_accessor :model, :reasoning, :system, :temperature, :tools
+  attr_accessor :model, :reasoning, :routing, :system, :temperature, :tools
 
   def initialize( # rubocop:disable Metrics/ParameterLists
     model:, api_key: ENV.fetch('OPEN_ROUTER_API_KEY', nil),
     reasoning: { effort: 'medium' },
+    routing: nil,
     system: SUPERFORECASTER_SYSTEM_PROMPT,
     temperature: 0.1,
     tools: [CALCULATOR_TOOL]
@@ -18,6 +19,7 @@ class OpenRouter
     @api_key = api_key
     @model = model
     @reasoning = reasoning
+    @routing = routing
     @system = system
     @temperature = temperature
     @tools = tools
@@ -26,22 +28,7 @@ class OpenRouter
   # https://openrouter.ai/docs
   def eval(*messages)
     start_time = Time.now
-    excon_response = connection.post(
-      body: {
-        # max_tokens: 2048,
-        model: model,
-        messages: [
-          {
-            role: 'system',
-            content: system
-          }
-        ].concat(messages),
-        reasoning: reasoning,
-        temperature: temperature,
-        tools: tools,
-        usage: { include: true }
-      }.to_json
-    )
+    excon_response = connection.post(body: request_body(messages).to_json)
     response = Response.new(
       :open_router,
       duration: Time.now - start_time,
@@ -78,6 +65,26 @@ class OpenRouter
   end
 
   private
+
+  def request_body(messages)
+    body = {
+      # max_tokens: 2048,
+      model: model,
+      messages: [
+        {
+          role: 'system',
+          content: system
+        }
+      ].concat(messages),
+      reasoning: reasoning,
+      temperature: temperature,
+      tools: tools,
+      usage: { include: true }
+    }
+    # https://openrouter.ai/docs/guides/routing/provider-selection
+    body[:provider] = routing if routing
+    body
+  end
 
   def connection
     Excon.new(
