@@ -60,8 +60,15 @@ class Response
     duration ? duration % 60 : 0
   end
 
+  # usage.cost is what OpenRouter charged. cost_details repeats the upstream
+  # charge (as a total and as prompt/completion parts), so it must not be
+  # summed in. Only with BYOK is the upstream charge billed separately (to
+  # your own provider key), on top of OpenRouter's fee in usage.cost.
   def open_router_cost
-    (data.dig('usage', 'cost') || 0) + (data.dig('usage', 'cost_details')&.values&.compact&.sum || 0) # rubocop:disable Style/SafeNavigationChainLength
+    usage = data['usage'] || {}
+    cost = usage['cost'] || 0
+    cost += usage.dig('cost_details', 'upstream_inference_cost') || 0 if usage['is_byok']
+    cost
   end
 
   # OpenAI-compatible content (used by OpenRouter)

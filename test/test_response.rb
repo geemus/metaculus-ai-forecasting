@@ -110,6 +110,24 @@ class ResponseTest < Minitest::Test
     assert_nil Response.new(:deepseek, json: '{}').host
   end
 
+  # Real OpenRouter usage: cost_details restates the same upstream charge.
+  def usage_json(is_byok:)
+    { 'usage' => {
+      'cost' => 0.0283088, 'is_byok' => is_byok,
+      'cost_details' => { 'upstream_inference_cost' => 0.0283088,
+                          'upstream_inference_prompt_cost' => 0.009295,
+                          'upstream_inference_completions_cost' => 0.0190138 }
+    } }.to_json
+  end
+
+  def test_cost_does_not_double_count_cost_details
+    assert_in_delta 0.0283088, Response.new(:deepseek, json: usage_json(is_byok: false)).cost, 1e-9
+  end
+
+  def test_byok_cost_adds_upstream_charge
+    assert_in_delta 0.0566176, Response.new(:deepseek, json: usage_json(is_byok: true)).cost, 1e-9
+  end
+
   def test_cost_defaults_to_zero_for_empty_json
     r = Response.new(:openai, json: '{}')
     assert_equal 0.0, r.cost
