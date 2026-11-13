@@ -14,14 +14,16 @@ module Provider
 
   PROVIDERS = %i[anthropic deepseek gemini openai].freeze
 
-  # OpenRouter provider routing for :deepseek. Prefer DeepSeek's own endpoint;
-  # fall back to third-party hosts only when they honor every request
-  # parameter (tools, reasoning, temperature) and serve near-full precision,
-  # so a fallback doesn't silently become a weaker forecaster. The host that
-  # served each response is recorded in the pipeline comment.
+  # OpenRouter provider routing for :deepseek. OpenRouter doesn't offer
+  # DeepSeek's own API for deepseek-v4-pro, only third-party hosts, so pin
+  # DeepInfra as the primary host to keep the forecaster consistent across
+  # runs. Fall back only to hosts that honor every request parameter (tools,
+  # reasoning, temperature) at fp8 or better (fp4 and unknown-precision hosts
+  # are excluded). The host that served each response is recorded in the
+  # pipeline comment.
   # https://openrouter.ai/docs/guides/routing/provider-selection
   DEEPSEEK_ROUTING = {
-    order: ['deepseek'],
+    order: ['deepinfra'],
     allow_fallbacks: true,
     require_parameters: true,
     quantizations: %w[fp8 bf16 fp16 fp32]
