@@ -12,8 +12,6 @@ on:
         required: true
       ASKNEWS_API_KEY:
         required: true
-      DEEPSEEK_API_KEY:
-        required: true
       METACULUS_BOT_API_TOKEN:
         required: true
       METACULUS_BOT_ID:
@@ -58,7 +56,6 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ASKNEWS_API_KEY: ${{ secrets.ASKNEWS_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
           METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
           OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
@@ -116,7 +113,6 @@ jobs:
       - run: bundle exec ruby tools_research.rb ${{ inputs.post_id }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
           METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
           OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
@@ -176,7 +172,6 @@ jobs:
       - run: bundle exec ruby forecast.rb ${{ inputs.post_id }} ${{ matrix.forecaster }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
           METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
           OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
@@ -232,7 +227,6 @@ jobs:
       - run: bundle exec ruby revise_forecast.rb ${{ inputs.post_id }} ${{ matrix.forecaster }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
           METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
           OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
@@ -299,7 +293,6 @@ jobs:
       - run: bundle exec ruby consensus.rb ${{ inputs.post_id }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           METACULUS_BOT_API_TOKEN: ${{ secrets.METACULUS_BOT_API_TOKEN }}
           METACULUS_BOT_ID: ${{ secrets.METACULUS_BOT_ID }}
           OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}

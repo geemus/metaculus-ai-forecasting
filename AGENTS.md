@@ -65,15 +65,15 @@ news.rb → tools_research.rb → forecast.rb (×3 forecasters) → revise_forec
 2. **Research** (`tools_research.rb`) - Deep research using Claude Opus with web search tools
 3. **Forecast** (`forecast.rb`) - 3 independent forecasters (OpenAI, Gemini, DeepSeek)
 4. **Revise** (`revise_forecast.rb`) - Each forecaster sees peers' estimates and revises
-5. **Consensus** (`consensus.rb`) - Final consolidated forecast submitted to Metaculus, synthesized by DeepSeek (`deepseek-v4-pro`, the `DeepSeek` client default). This step is deliberately a cheap model: it combines the revised forecasts rather than reasoning from scratch.
+5. **Consensus** (`consensus.rb`) - Final consolidated forecast submitted to Metaculus, synthesized by DeepSeek (`deepseek/deepseek-v4-pro` via OpenRouter, the `:deepseek` provider default). This step is deliberately a cheap model: it combines the revised forecasts rather than reasoning from scratch.
 
 ### Key Files
 
-- **`lib/provider.rb`** - Multi-provider LLM factory. `Provider::FORECASTERS` — the forecaster ensemble (`:openai`, `:gemini`, `:deepseek`) — is loaded from `forecasters.json`, the single source of truth that CI also reads directly. `:openai` and `:gemini` route through OpenRouter; `:deepseek` uses its own client. (`:anthropic` is retained as a provider, used by `tournament_retro.rb`, but is in neither the forecaster ensemble nor consensus, which runs on `:deepseek`. Perplexity is still used for web search in the research phase via the Agent API in `tools_research.rb`, but is no longer a forecaster.)
+- **`lib/provider.rb`** - Multi-provider LLM factory. `Provider::FORECASTERS` — the forecaster ensemble (`:openai`, `:gemini`, `:deepseek`) — is loaded from `forecasters.json`, the single source of truth that CI also reads directly. Every provider routes through OpenRouter (`lib/open_router.rb`). `:deepseek` adds `Provider::DEEPSEEK_ROUTING`: DeepSeek's own endpoint first, falling back only to hosts that support every request parameter at fp8 or better; the serving host is recorded per forecaster in the pipeline comment (`host=`). (`:anthropic` is retained as a provider, used by `tournament_retro.rb`, but is in neither the forecaster ensemble nor consensus, which runs on `:deepseek`. Perplexity is still used for web search in the research phase via the Agent API in `tools_research.rb`, but is no longer a forecaster.)
 - **`lib/metaculus.rb`** - Metaculus API client. `Question` class wraps question data; handles all 4 question types (binary, numeric, discrete, multiple_choice).
 - **`lib/prompts.rb`** - System prompts and ERB templates. `SUPERFORECASTER_SYSTEM_PROMPT` encodes the Bayesian methodology (base rates, explicit adjustments, uncertainty calibration).
 - **`lib/response.rb`** - Parses LLM responses across providers. Extracts XML-tagged forecast values (`<probability>`, `<percentiles>`, `<probabilities>`).
-- **`lib/tools.rb`** - Defines `CALCULATOR_TOOL` (safe arithmetic via Dentaku) and `Tools.dispatch` (centralized tool-call router used by OpenRouter and DeepSeek). Web search is centralized upstream in the research phase, so forecasters have no search tool.
+- **`lib/tools.rb`** - Defines `CALCULATOR_TOOL` (safe arithmetic via Dentaku) and `Tools.dispatch` (centralized tool-call router used by the OpenRouter client). Web search is centralized upstream in the research phase, so forecasters have no search tool.
 - **`lib/prompt_version.rb`** - Content hash of `lib/prompts.rb` + `lib/prompt_templates/*`. Each stage stamps it into its cached JSON when it generates (cached stages are reused across runs), the pipeline comment records it per stage in `<prompt_version>`, and the retro groups questions by it.
 - **`lib/utility.rb`** - File-based caching in `tmp/{post_id}/`. All prompts and outputs are cached for auditability.
 
@@ -101,7 +101,6 @@ All intermediate data is cached in `tmp/{post_id}/`:
 
 ```
 ANTHROPIC_API_KEY
-DEEPSEEK_API_KEY
 OPEN_ROUTER_API_KEY
 PERPLEXITY_API_KEY
 ASKNEWS_API_KEY

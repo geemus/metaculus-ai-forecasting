@@ -10,20 +10,6 @@ class ResponseTest < Minitest::Test
     }.to_json
   end
 
-  def deepseek_json(content: 'ds', input: 200, output: 100, total: 300, # rubocop:disable Metrics/ParameterLists
-                    cache_hit: 50, cache_miss: 150)
-    {
-      'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],
-      'usage' => {
-        'prompt_tokens' => input,
-        'completion_tokens' => output,
-        'total_tokens' => total,
-        'prompt_cache_hit_tokens' => cache_hit,
-        'prompt_cache_miss_tokens' => cache_miss
-      }
-    }.to_json
-  end
-
   def open_router_json(content: 'or', input: 300, output: 100, total: 400, cost: 0.02)
     {
       'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => nil } }],
@@ -43,11 +29,6 @@ class ResponseTest < Minitest::Test
   def test_content_openai_provider
     r = Response.new(:openai, json: openai_json(content: 'test content'))
     assert_equal 'test content', r.content
-  end
-
-  def test_content_deepseek_provider
-    r = Response.new(:deepseek, json: deepseek_json(content: 'ds content'))
-    assert_equal 'ds content', r.content
   end
 
   def test_content_open_router_provider
@@ -117,11 +98,16 @@ class ResponseTest < Minitest::Test
     assert_in_delta 0.01, r.cost, 0.0001
   end
 
-  def test_deepseek_cost_calculation
-    # cost = (50/1_000_000 * 0.028) + (150/1_000_000 * 0.28) + (100/1_000_000 * 0.42)
-    expected = (50 / 1_000_000.0 * 0.028) + (150 / 1_000_000.0 * 0.28) + (100 / 1_000_000.0 * 0.42)
-    r = Response.new(:deepseek, json: deepseek_json(output: 100, cache_hit: 50, cache_miss: 150))
-    assert_in_delta expected.round(2), r.cost, 0.0001
+  def test_cost_uses_open_router_usage_for_every_provider
+    %i[deepseek gemini openai anthropic].each do |provider|
+      r = Response.new(provider, json: { 'usage' => { 'cost' => 0.12 } }.to_json)
+      assert_in_delta 0.12, r.cost, 0.0001, provider
+    end
+  end
+
+  def test_host_reads_open_router_provider_field
+    assert_equal 'DeepSeek', Response.new(:deepseek, json: { 'provider' => 'DeepSeek' }.to_json).host
+    assert_nil Response.new(:deepseek, json: '{}').host
   end
 
   def test_cost_defaults_to_zero_for_empty_json

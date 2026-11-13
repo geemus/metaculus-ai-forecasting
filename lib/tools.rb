@@ -52,7 +52,7 @@ module Tools
     end
 
     # Shared tool-call dispatch.  Used by all tool-capable clients
-    # (OpenRouter, DeepSeek) so that tool routing stays in one place.
+    # (OpenRouter) so that tool routing stays in one place.
     def dispatch(tool_call)
       arguments = JSON.parse(tool_call.dig('function', 'arguments'))
       tool = tool_call.dig('function', 'name')
