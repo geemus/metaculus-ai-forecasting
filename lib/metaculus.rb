@@ -7,6 +7,14 @@ require 'time'
 
 # Metaculus API client: fetches posts and tournaments, submits forecasts and comments.
 class Metaculus
+  # The date a pipeline stage executes, in UTC, shared by every prompt that
+  # states it so research and forecast prompts agree on label and clock.
+  RUN_DATE_LABEL = 'Run Date (UTC)'
+
+  def self.run_date(at = Time.now)
+    at.utc.strftime('%B %d, %Y')
+  end
+
   def self.get_post(id)
     new.get_post(id)
   end
@@ -443,7 +451,7 @@ class Metaculus
     def metadata_content
       @metadata_content ||= begin
         content = []
-        content << "Current Date: #{Time.now.strftime('%B %d, %Y')}"
+        content << "#{Metaculus::RUN_DATE_LABEL}: #{Metaculus.run_date}"
         asked_on = Time.parse(data['created_at'])
         content << "Asked On: #{asked_on.strftime('%B %d, %Y')}"
 

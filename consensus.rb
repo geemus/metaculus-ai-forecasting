@@ -10,7 +10,7 @@ post_id = ARGV[0] || raise('post id argument is required')
 question = fetch_question(post_id)
 exit if should_skip_forecast?(question, post_id)
 
-@research_output = load_research(post_id)
+@research_output = load_research(post_id, strip_tags: 'research_summary')
 @revised_forecasts = load_forecasts(post_id, type: 'revision')
 @mechanical_baseline = mechanical_baseline(question, @revised_forecasts)
 

@@ -139,6 +139,8 @@ retro_prompt = <<~RETRO_PROMPT
 
   ## Recommendations
 
+  The pipeline's objective is expected log score: its prompts state that objective in an Objective block, and every other instruction is meant to be a means to it. Judge each rule by that standard. Every proposed change must state how it improves expected score, and a rule the Objective block already implies is a candidate for removal. Rules labelled as empirical corrections (from tournament feedback) are factual claims about forecaster behaviour: check whether this data still shows the bias they correct, and propose removing any it no longer supports.
+
   A retro that only adds rules makes the prompts longer and more redundant each cycle, and a long list of changes drawn from one tournament mostly fits noise. Follow these rules:
 
   1. **Top changes (at most 3)**, ranked by expected score impact. A change may target any stage — research, forecaster, question-type, revision, or consensus prompts, or the aggregation code. For each:

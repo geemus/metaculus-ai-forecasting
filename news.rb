@@ -153,7 +153,8 @@ Formatador.display "\n[bold][green]# News: Summarizing(#{post_id})…[/] "
 news_summary = cache(post_id, 'outputs/news_summary.md') do
   llm = OpenRouter.new(
     model: 'anthropic/claude-haiku-4.5',
-    system: 'You are a research assistant summarizing news for a forecasting pipeline. Be concise and factual.',
+    system: 'You are a research assistant summarizing news for a forecasting pipeline. Be concise and factual, ' \
+            'and include developments that cut against the apparent trend as well as those that support it.',
     tools: []
   )
   summary_prompt = <<~PROMPT
