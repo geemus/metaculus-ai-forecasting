@@ -2,7 +2,7 @@
 
 Your research will focus on the following forecast context.
 
-**Today's date: <%= Time.now.strftime('%B %d, %Y') %>** — anchor every search to this reference date. Treat a data point whose observation date is unclear or unstated as unusable, because undated or stale figures silently corrupt the base rates and current-state indicators the forecast is built on.
+**<%= Metaculus::RUN_DATE_LABEL %>: <%= Metaculus.run_date %>** — the date this research is being run; anchor every search to it. Treat a data point whose observation date is unclear or unstated as unusable, because undated or stale figures silently corrupt the base rates and current-state indicators the forecast is built on.
 
 <%= @forecast_prompt -%>
 
@@ -59,5 +59,5 @@ What could move the outcome, and in which direction?
 After the four sections above, close your brief with a research summary in this format:
 
 <research_summary>
-[3-5 sentence executive summary covering: the base rate range found and its reliability; the 2-3 most important current indicators with their as-of dates and direction; the most credible surprise signal (or state that none exist); the single largest driver of uncertainty; and your own overall range for the outcome (a probability range for binary questions, a value range with units for numeric ones). Forecasters never see this summary, so it is the one place to state that range.]
+[3-5 sentence executive summary covering: the base rate range found and its reliability; the 2-3 most important current indicators with their as-of dates and direction; the most credible surprise signal (or state that none exist); the single largest driver of uncertainty; and your own overall range for the outcome (a probability range for binary questions, a value range with units for numeric ones). Forecasters never see this summary: it is a record for later calibration review of the research stage, not advice to them, so state the range you actually believe rather than one that argues for an outcome.]
 </research_summary>

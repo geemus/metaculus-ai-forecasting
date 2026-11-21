@@ -442,4 +442,76 @@ class TestPrompts < Minitest::Test
       assert_equal 1, prompt.scan('automated parser').size, type
     end
   end
+
+  # ─── objective blocks: one terminal goal, ranked tie-breakers ──────────────
+
+  def test_forecaster_and_consensus_prompts_state_scoring_objective
+    [SUPERFORECASTER_SYSTEM_PROMPT, CONSENSUS_SYSTEM_PROMPT].each do |prompt|
+      assert_includes prompt, '# Objective'
+      assert_includes prompt, 'proper log scoring rule'
+      assert_includes prompt, 'not evidence about it'
+      assert_includes prompt, 'how Metaculus will resolve the question under its written criteria'
+    end
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, "weigh others' reasoning, not their headcount"
+    assert_includes CONSENSUS_SYSTEM_PROMPT, 'so your view is not counted twice'
+  end
+
+  def test_researcher_prompt_states_scout_objective
+    assert_includes RESEARCHER_SYSTEM_PROMPT, '# Objective'
+    assert_includes RESEARCHER_SYSTEM_PROMPT, 'You are a scout, not an advocate'
+    assert_includes RESEARCHER_SYSTEM_PROMPT, 'an absence you checked is evidence'
+    assert_includes RESEARCHER_SYSTEM_PROMPT, 'is a hard constraint, not a priority to trade off'
+  end
+
+  # ─── symmetric low-base-rate handling ──────────────────────────────────────
+
+  def test_low_base_rate_guidance_is_symmetric
+    assert_includes RESEARCHER_SYSTEM_PROMPT, 'and one to the factors that make it typical of it'
+    refute_includes RESEARCHER_SYSTEM_PROMPT, 'reasons this time could be different from the reference class'
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'binary'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'give this step extra scrutiny, not extra weight'
+    refute_includes prompt, 'the cost of underestimating a rare event'
+  end
+
+  def test_strongest_case_gap_fits_numeric_questions
+    @research_output = 'research summary'
+    prompt = prompt_with_type(nil, build_question(type: 'numeric'), SHARED_FORECAST_PROMPT_TEMPLATE)
+    assert_includes prompt, 'a P50 outside your own 25th–75th percentile range'
+  end
+
+  # ─── empirical corrections are labelled as such ────────────────────────────
+
+  def test_empirical_corrections_are_labelled
+    mc = multiple_choice_forecast_prompt(build_question(type: 'multiple_choice', options: MC_OPTIONS))
+    assert_includes mc, 'an empirical correction from tournament feedback'
+    assert_includes mc, "lower the favorite's probability"
+    refute_includes mc, "widen the favorite's probability"
+    assert_includes SUPERFORECASTER_SYSTEM_PROMPT, 'an empirical correction from tournament feedback'
+  end
+
+  # ─── run date: one label and clock across research and forecast ────────────
+
+  def test_research_and_forecast_prompts_share_run_date
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    research = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    metadata = build_question(type: 'binary').metadata_content
+    line = "#{Metaculus::RUN_DATE_LABEL}: #{Metaculus.run_date}"
+    assert_includes research, line
+    assert_includes metadata, line
+    refute_includes research, "Today's date"
+    refute_includes metadata, 'Current Date'
+  end
+
+  def test_run_date_is_utc
+    assert_equal 'November 22, 2026', Metaculus.run_date(Time.new(2026, 11, 21, 20, 0, 0, '-08:00'))
+  end
+
+  def test_research_summary_declared_a_record_not_advice
+    @forecast_prompt = 'forecast context'
+    @news_output = 'news'
+    prompt = RESEARCH_PROMPT_TEMPLATE.result(binding)
+    assert_includes prompt, 'a record for later calibration review of the research stage, not advice to them'
+  end
 end
