@@ -1,20 +1,17 @@
 # frozen_string_literal: true
 
 require './lib/response'
-require './lib/tools'
 
-# OpenRouter chat-completions client with a tool-call loop (via Tools.dispatch);
-# serves every provider (see Provider).
+# OpenRouter chat-completions client; serves every provider (see Provider).
 class OpenRouter
-  attr_accessor :model, :reasoning, :routing, :system, :temperature, :tools
+  attr_accessor :model, :reasoning, :routing, :system, :temperature
 
   def initialize( # rubocop:disable Metrics/ParameterLists
     model:, api_key: ENV.fetch('OPEN_ROUTER_API_KEY', nil),
     reasoning: { effort: 'medium' },
     routing: nil,
     system: SUPERFORECASTER_SYSTEM_PROMPT,
-    temperature: 0.1,
-    tools: [CALCULATOR_TOOL]
+    temperature: 0.1
   )
     @api_key = api_key
     @model = model
@@ -22,7 +19,6 @@ class OpenRouter
     @routing = routing
     @system = system
     @temperature = temperature
-    @tools = tools
   end
 
   # https://openrouter.ai/docs
@@ -34,26 +30,8 @@ class OpenRouter
       duration: Time.now - start_time,
       json: excon_response.body
     )
-    messages << {
-      'role' => 'assistant',
-      'content' => response.content,
-      'reasoning_content' => response.reasoning_content
-    }
-    if response.tool_calls.empty?
-      response.display_meta
-      response
-    else
-      messages.last['tool_calls'] = response.tool_calls
-      response.tool_calls.each do |tool_call|
-        messages << {
-          'content' => Tools.dispatch(tool_call),
-          'role' => 'tool',
-          'tool_call_id' => tool_call['id']
-        }
-      end
-
-      self.eval(*messages)
-    end
+    response.display_meta
+    response
   rescue JSON::ParserError
     retries = (retries || 0) + 1
     retry if retries <= 3
@@ -78,7 +56,6 @@ class OpenRouter
       ].concat(messages),
       reasoning: reasoning,
       temperature: temperature,
-      tools: tools,
       usage: { include: true }
     }
     # https://openrouter.ai/docs/guides/routing/provider-selection

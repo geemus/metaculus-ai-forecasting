@@ -3,7 +3,7 @@
 require './lib/helpers/response'
 
 # A provider-agnostic wrapper around one LLM API response: content, token
-# usage, cost and tool calls.
+# usage and cost.
 class Response
   include ResponseHelpers
 
@@ -32,10 +32,6 @@ class Response
   end
 
   def content = @content ||= openai_compatible_content
-
-  def reasoning_content = @reasoning_content ||= openai_compatible_reasoning_content
-
-  def tool_calls = @tool_calls ||= openai_compatible_tool_calls
 
   # Every provider routes through OpenRouter, which reports the billed cost.
   def cost = @cost ||= open_router_cost
@@ -75,17 +71,5 @@ class Response
   def openai_compatible_content
     choices = data['choices'] or raise "API error (no choices): #{data.inspect}"
     choices.map { |choice| choice['message']['content'] }.join("\n")
-  end
-
-  # OpenAI-compatible reasoning content (used by OpenRouter)
-  def openai_compatible_reasoning_content
-    choices = data['choices'] or raise "API error (no choices): #{data.inspect}"
-    choices.map { |choice| choice['message']['reasoning_content'] }.join("\n")
-  end
-
-  # OpenAI-compatible tool_calls (used by OpenRouter)
-  def openai_compatible_tool_calls
-    choices = data['choices'] or raise "API error (no choices): #{data.inspect}"
-    choices.map { |choice| choice['message']['tool_calls'] }.flatten.compact
   end
 end

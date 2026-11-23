@@ -16,10 +16,9 @@ cache_write(post_id, 'inputs/system.superforecaster.md', SUPERFORECASTER_SYSTEM_
 
 Formatador.display "\n[bold][green]# Superforecaster[#{provider}]: Forecasting(#{post_id})…[/] "
 cache(post_id, "forecasts/forecast.#{provider}.json") do
-  # All forecasters route through function-calling-capable clients.  Web
-  # search is centralized upstream in tools_research.rb (research_summary
-  # is injected above), so forecasters get only CALCULATOR_TOOL.
-  llm_args = { system: SUPERFORECASTER_SYSTEM_PROMPT, temperature: 0.9, tools: [CALCULATOR_TOOL] }
+  # Forecasters get no tools: web search is centralized upstream in
+  # tools_research.rb (research_summary is injected above).
+  llm_args = { system: SUPERFORECASTER_SYSTEM_PROMPT, temperature: 0.9 }
   llm = Provider.new(provider, **llm_args)
 
   # Blind estimate: no external signals (community aggregate shown later during Delphi revision)

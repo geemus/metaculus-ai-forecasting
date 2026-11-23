@@ -19,7 +19,7 @@ exit if should_skip_forecast?(question, post_id)
 
 Formatador.display "\n[bold][green]# Superforecaster[#{provider}]: Revising Forecast(#{post_id})…[/] "
 cache(post_id, "forecasts/revision.#{provider}.json") do
-  llm_args = { system: SUPERFORECASTER_SYSTEM_PROMPT, temperature: 0.5, tools: [CALCULATOR_TOOL] }
+  llm_args = { system: SUPERFORECASTER_SYSTEM_PROMPT, temperature: 0.5 }
   llm = Provider.new(provider, **llm_args)
   forecast_prompt = prompt_with_type(llm, question, SHARED_FORECAST_PROMPT_TEMPLATE)
   forecast_delphi_prompt = FORECAST_DELPHI_PROMPT_TEMPLATE.result(binding)
