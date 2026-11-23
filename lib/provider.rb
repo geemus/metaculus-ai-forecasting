@@ -17,8 +17,8 @@ module Provider
   # OpenRouter provider routing for :deepseek. OpenRouter doesn't offer
   # DeepSeek's own API for deepseek-v4-pro, only third-party hosts, so pin
   # DeepInfra as the primary host to keep the forecaster consistent across
-  # runs. Fall back only to hosts that honor every request parameter (tools,
-  # reasoning, temperature) at fp8 or better (fp4 and unknown-precision hosts
+  # runs. Fall back only to hosts that honor every request parameter (reasoning,
+  # temperature) at fp8 or better (fp4 and unknown-precision hosts
   # are excluded). The host that served each response is recorded in the
   # pipeline comment.
   # https://openrouter.ai/docs/guides/routing/provider-selection

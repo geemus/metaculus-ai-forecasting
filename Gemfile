@@ -4,7 +4,6 @@ source 'https://rubygems.org'
 
 ruby '~> 4.0'
 
-gem 'dentaku'
 gem 'erb'
 gem 'excon'
 gem 'formatador'

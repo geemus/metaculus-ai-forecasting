@@ -3,9 +3,9 @@
 require_relative 'test_helper'
 
 class ResponseTest < Minitest::Test
-  def openai_json(content: 'hello', input: 100, output: 50, total: 150, tool_calls: nil)
+  def openai_json(content: 'hello', input: 100, output: 50, total: 150)
     {
-      'choices' => [{ 'message' => { 'content' => content, 'tool_calls' => tool_calls } }],
+      'choices' => [{ 'message' => { 'content' => content } }],
       'usage' => { 'prompt_tokens' => input, 'completion_tokens' => output, 'total_tokens' => total }
     }.to_json
   end
@@ -131,22 +131,6 @@ class ResponseTest < Minitest::Test
   def test_cost_defaults_to_zero_for_empty_json
     r = Response.new(:openai, json: '{}')
     assert_equal 0.0, r.cost
-  end
-
-  # ---------------------------------------------------------------------------
-  # tool_calls
-  # ---------------------------------------------------------------------------
-
-  def test_tool_calls_returns_empty_when_nil
-    r = Response.new(:openai, json: openai_json(tool_calls: nil))
-    assert_equal [], r.tool_calls
-  end
-
-  def test_tool_calls_returns_list_when_present
-    calls = [{ 'id' => 'call_1', 'function' => { 'name' => 'search', 'arguments' => '{}' } }]
-    r = Response.new(:openai, json: openai_json(tool_calls: calls))
-    assert_equal 1, r.tool_calls.length
-    assert_equal 'search', r.tool_calls.first.dig('function', 'name')
   end
 
   # ---------------------------------------------------------------------------
