@@ -17,8 +17,7 @@ provider = :deepseek
 Formatador.display "\n[bold][green]# Summary[#{provider}]: #{post_id}…[/] "
 llm = Provider.new(
   :deepseek,
-  system: '',
-  tools: []
+  system: ''
 )
 prompt = <<~PROMPT
   1. Before responding, show step-by-step reasoning in clear, logical order starting with `<think>` on the line before and ending with `</think>` on the line after.
