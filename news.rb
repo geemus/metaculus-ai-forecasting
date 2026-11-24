@@ -57,8 +57,7 @@ Formatador.display "\n[bold][green]# News: Generating Filters[anthropic/claude-h
 filters_json = cache(post_id, 'news_filters.json') do
   llm = OpenRouter.new(
     model: 'anthropic/claude-haiku-4.5',
-    system: '',
-    tools: []
+    system: ''
   )
   filters = llm.eval({ role: 'user', content: filter_prompt })
   puts filters.content
@@ -154,8 +153,7 @@ news_summary = cache(post_id, 'outputs/news_summary.md') do
   llm = OpenRouter.new(
     model: 'anthropic/claude-haiku-4.5',
     system: 'You are a research assistant summarizing news for a forecasting pipeline. Be concise and factual, ' \
-            'and include developments that cut against the apparent trend as well as those that support it.',
-    tools: []
+            'and include developments that cut against the apparent trend as well as those that support it.'
   )
   summary_prompt = <<~PROMPT
     Summarize these news articles into a brief roundup. The articles come in two blocks:
