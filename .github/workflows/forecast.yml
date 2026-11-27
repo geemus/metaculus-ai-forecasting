@@ -256,6 +256,9 @@ jobs:
     needs: revise_forecast
     if: ${{ inputs.post_id }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC: assume the run store's AWS role without stored keys
     steps:
       - uses: actions/checkout@v7
       - uses: actions/cache/restore@v6
@@ -306,6 +309,27 @@ jobs:
         with:
           name: ${{ inputs.post_id }}.consensus.json
           path: tmp/${{ inputs.post_id }}/forecasts/consensus.json
+      # Durable run record (lib/run_record.rb). The artifact is a stopgap
+      # that expires; S3 is the long-term store, used once the RUN_STORE_*
+      # repository variables are set. Neither may fail a submitted forecast.
+      - uses: actions/upload-artifact@v7
+        if: ${{ hashFiles('tmp/run_store/**/*.json') != '' }}
+        continue-on-error: true
+        with:
+          name: ${{ inputs.post_id }}.run_record
+          path: tmp/run_store
+      - id: run_store_aws
+        uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ vars.RUN_STORE_BUCKET != '' && vars.RUN_STORE_ROLE_ARN != '' && hashFiles('tmp/run_store/**/*.json') != '' }}
+        continue-on-error: true
+        with:
+          role-to-assume: ${{ vars.RUN_STORE_ROLE_ARN }}
+          aws-region: ${{ vars.RUN_STORE_REGION || 'us-east-1' }}
+      - if: ${{ steps.run_store_aws.outcome == 'success' }}
+        continue-on-error: true
+        run: aws s3 cp tmp/run_store "s3://$RUN_STORE_BUCKET/" --recursive --no-progress
+        env:
+          RUN_STORE_BUCKET: ${{ vars.RUN_STORE_BUCKET }}
       - run: |
           echo "$(cat tmp/${{ inputs.post_id }}/consensus/forecast.json | jq -r '.[] | .continuous_cdf // .probability_yes // .probability_yes_per_category')" >> $GITHUB_STEP_SUMMARY
       - run: |

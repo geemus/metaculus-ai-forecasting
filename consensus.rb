@@ -31,6 +31,18 @@ begin
   puts consensus.content
 
   question.submit(consensus, comment_text: CommentBuilder.build_pipeline_comment(post_id, question, consensus, @revised_forecasts))
+
+  # Durable record of this run for later analysis (CI uploads it to S3).
+  original_forecasts = begin
+    load_forecasts(post_id, type: 'forecast')
+  rescue StandardError => e
+    warn "WARNING: original forecasts unavailable for run record: #{e.message}"
+    []
+  end
+  key = RunRecord.save(post_id: post_id, question: question, consensus: consensus,
+                       forecasts: original_forecasts, revisions: @revised_forecasts,
+                       mechanical_baseline: @mechanical_baseline)
+  Formatador.display_line("[green]# Run record: #{key}[/]") if key
 rescue StandardError => e
   puts e.message
   puts "! Retries remaining: #{retries_remaining - 1}"

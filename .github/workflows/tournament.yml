@@ -36,6 +36,11 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}+enqueue+${{ matrix.post_id }}
       cancel-in-progress: false
+    # Called workflows can't exceed these; id-token lets forecast.yml's
+    # consensus job upload run records to S3 via OIDC.
+    permissions:
+      contents: read
+      id-token: write
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       ASKNEWS_API_KEY: ${{ secrets.ASKNEWS_API_KEY }}
